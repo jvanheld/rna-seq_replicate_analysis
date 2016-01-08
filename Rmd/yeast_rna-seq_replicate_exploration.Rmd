@@ -1,0 +1,48 @@
+---
+title: "Exploring RNA-seq data from Gierlinski, Schurch and Barton"
+author: "Mustafa Abu El-Qumsan & Jacques van Helden"
+date: "8 January 2016"
+output: html_document
+---
+
+
+## Introduction
+
+
+The goal of this tutorial is to get familiar with RNA-seq data: 
+
+- load a table of read counts per gene;
+- do some exploratory statistics about these counts per gene (distributions, histograms, ...)
+
+
+### Data source
+
+1. Gierliński,M., Cole,C., Schofield,P., Schurch,N.J., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G., Owen-Hughes,T., et al. (2015) Statistical models for RNA-seq data derived from a two-condition 48-replicate experiment. Bioinformatics, 10.1093/bioinformatics/btv425.
+2. Schurch,N.J., Schofield,P., Gierliński,M., Cole,C., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G.G., Owen-Hughes,T., et al. (2015) Evaluation of tools for differential gene expression analysis by RNA-seq on a 48 biological replicate experiment. arXiv.
+
+#### Full original datasets (>300 fastq files !)
+
+Data shared at ENA: <https://figshare.com/articles/Metadata_for_a_highly_replicated_two_condition_yeast_RNAseq_experiment_/1416210>
+
+Fastq files: <http://www.ebi.ac.uk/ena/data/view/ERP004763>
+
+#### Read count tables
+
+- Wild-type yeast strains (WT): <https://dx.doi.org/10.6084/m9.figshare.1425503>
+- Snf2 mutant: <https://dx.doi.org/10.6084/m9.figshare.1425502>
+
+
+## Data loading
+
+We will now load the two read count tables (WT and Snf2 mutants respectively).
+
+```{r data loading}
+
+dir.counts <- "data/counts_per_gene"
+counts.wt <- read.delim(file=file.path(dir.counts, "WT_raw.tsv"), row.names = 1)
+counts.sfn2 <- read.delim(file=file.path(dir.counts, "Snf2_raw.tsv"), row.names = 1)
+
+```
+
+
+
