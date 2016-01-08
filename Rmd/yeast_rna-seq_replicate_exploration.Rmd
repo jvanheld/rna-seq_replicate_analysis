@@ -144,6 +144,24 @@ for (genotype in c("WT", "SNF2")) {
 
 ```
 
+* * * * * * * * *
+
+## Exercises
+
+1. Compute a table with summary statistics per samples (columns of the count table). In particular, include in this table the following statistics. All statistics should be computed on both the raw counts and log2-transformed counts. 
+
+    a. Sum of counts in the sample.
+    b. Median count per sample.
+    c. Some illustrative percentiles (0=min, 5, 10, 25, 50, 75, 90, 95, 100=max)
+    d. Inter-Quartile Range (IQR).
+    e. Classical statistical estimates (mean, variance, standard deviation).
+    f. Any other statistics that you moght find relevant.
+
+2. Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
+
+3. Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
+
+4. Draw a plot to compare the mean expression per gene between WT and SNF2 genotypes. 
 
 
 
