@@ -5,6 +5,18 @@ date: "8 January 2016"
 output: html_document
 ---
 
+```{r knitr setup, include=FALSE,  eval=TRUE, echo=FALSE, warning=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo=TRUE, eval=TRUE, cache=FALSE, message=FALSE, warning=FALSE, comment = "")
+```
+
+
+```{r execution parameters}
+dir.base <- "~/rna-seq_replicate_analysis"
+setwd(dir.base)
+
+```
+
 
 ## Introduction
 
@@ -37,12 +49,103 @@ Fastq files: <http://www.ebi.ac.uk/ena/data/view/ERP004763>
 We will now load the two read count tables (WT and Snf2 mutants respectively).
 
 ```{r data loading}
-
-dir.counts <- "data/counts_per_gene"
+dir.counts <- file.path(dir.base, "data/counts_per_gene")
 counts.wt <- read.delim(file=file.path(dir.counts, "WT_raw.tsv"), row.names = 1)
-counts.sfn2 <- read.delim(file=file.path(dir.counts, "Snf2_raw.tsv"), row.names = 1)
+names(counts.wt) <- paste(sep=".", "WT", 1:ncol(counts.wt))
+
+counts.snf2 <- read.delim(file=file.path(dir.counts, "Snf2_raw.tsv"), row.names = 1)
+names(counts.snf2) <- paste(sep=".", "SNF2", 1:ncol(counts.snf2))
 
 ```
+
+## Data exploration
+
+We will first check the dimension of the two tables.
+
+```{r}
+
+## count the number of genes (rows) in the two data tables.
+dim(counts.wt)
+dim(counts.snf2)
+
+## Check if the row names (gene names) are the same in the two data tables
+genes.wt <- row.names(counts.wt)
+genes.snf2 <- row.names(counts.snf2)
+
+## Count the number of different genes (should give zero)
+if (sum(genes.wt != genes.snf2) > 0) {
+  stop("The WT and Snf2 tables do not contain the same number of rows")
+}
+## OK, it gives 0. 
+
+## Merge the two count tables in a single table
+counts <- cbind(counts.wt, counts.snf2)
+
+## Prepare a sample description table
+## THIS DOES NOT WORK BECAUSE THE COUNT TABLE CONTAINS 96 columns, i.e. one column per sample, WHEREAS THE sample mapping table contains 7 technical replicates per sample. 
+## sample.descriptions <- read.delim(file.path(dir.base, "data/ERP004763_sample_mapping.tsv"), row.names=1)
+
+## Sample description table
+sample.description <- data.frame(
+  genotype = c(rep("WT", times=ncol(counts.wt)), 
+               rep("SNF2", times=ncol(counts.snf2))))
+
+## Associate one specific color to each genotype
+color.code <- c("WT"="#BBBBDD", "SNF2"="#FFBBBB")
+sample.description$color <- color.code[sample.description$genotype]
+
+```
+
+
+The tables *counts.wt* and *counts.snf2* contain the read counts per gene for the Wild-Type  and the Snf2 strains, respectively. Each table contains one row per gene and one column per sample. 
+
+
+| Genotype |  Rows | Columns |
+|----------|-------|---------|
+| WT | `r nrow(counts.wt)` |  `r ncol(counts.wt)` |
+| Snf2 | `r nrow(counts.snf2)` |  `r ncol(counts.snf2)` |
+| All | `r nrow(counts)` |  `r ncol(counts)` |
+| | |
+
+
+## Compute the log-transformed counts
+
+
+RNA-seq count data are characterized by a very wide range of values, with small count numbers of the majority of the genes, and a small number of genes having hundreds fo thousands of counts. For many purposes (visualisation, summarization, ...), it is more relevant to work with log2-transformed counts. 
+
+
+However, we first must treate a problem: since many genes have 0 counts, the logarithmic transformation would give -Infinite, which creates problems for both computation and display. To circumvent this, we arbitrarily convert the zero counts in a small epsilon value (smaller than 1, so we can distinguish the genes with 1 counts from genes with 0 counts). we will choose an epsilon of 0.01.  
+
+```{r log_counts_computation}
+epsilon <- 1/4
+
+## Compute log2-transformed counts
+## sum(counts == 0) ## Count the number of zero values
+counts.epsilon <- counts
+counts.epsilon[counts == 0] <- epsilon
+counts.log2 <- log2(counts.epsilon)
+
+```
+
+
+## Box plots
+
+We would like to draw box plots of the counts per genes.
+
+```{r boxplots of log2-transformed count, fig.height=12, fig.width=8, fig.cap="Box plot of the log2-transformed counts per sample. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
+
+for (genotype in c("WT", "SNF2")) {
+  boxplot(counts.log2[,sample.description$genotype == genotype], 
+          horizontal = TRUE, las=2, col=color.code[genotype],
+          main=genotype,
+          xlab=paste(sep="", "log2(counts), with epsilon=", epsilon))
+  
+}
+
+```
+
+
+
 
 
 
