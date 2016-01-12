@@ -17,9 +17,13 @@ output:
   word_document: default
 ---
 
+* * * * * * 
+
+## Parameters for the execution of this tutorial
+
 ```{r knitr setup, include=FALSE,  eval=TRUE, echo=FALSE, warning=FALSE}
 library(knitr)
-knitr::opts_chunk$set(echo=TRUE, eval=TRUE, cache=FALSE, message=FALSE, warning=FALSE, comment = "")
+knitr::opts_chunk$set(echo=FALSE, eval=TRUE, cache=FALSE, message=FALSE, warning=FALSE, comment = "")
 ```
 
 
@@ -116,7 +120,7 @@ The tables *counts.wt* and *counts.snf2* contain the read counts per gene for th
 |----------|-------|---------|
 | WT | `r nrow(counts.wt)` |  `r ncol(counts.wt)` |
 | Snf2 | `r nrow(counts.snf2)` |  `r ncol(counts.snf2)` |
-| All | `r nrow(counts)` |  `r ncol(counts)` |
+| All | `r nrow(counts)` | `r ncol(counts)` |
 | | |
 
 
@@ -156,6 +160,42 @@ for (genotype in c("WT", "SNF2")) {
 
 ```
 
+
+
+* * * * * * * * *
+
+## Normalization of RNA-seq counts
+
+The total number of counts (``libsum'') can show wide variations from sample to sample, resulting from various sources (biological sample, sequencing, mapping, ...). Before comparing the counts per gene between different samples, it is important to perform a between-sample normalization. 
+
+Several methods have been proposed for this. 
+
+### Counts per million (CPM)
+
+Counts are converted to counts per million by a simple scaling rule. 
+
+We dispose of a raw count table containing `r nrow(counts)` rows (one row per gene) and `r ncol(counts)` columns (one column per sample). 
+
+Let us define $x_{i,j}$ as the count of reads for gene $i$ ($i^{th}$ row) in sample $j$ ($j^{th}$ column). 
+
+We can compute the sum of counts for each sample (column), which is also called the ***libsum***.
+
+$$N_j = \sum_{i=1}^{g}{x_{i,j}}$$
+
+where $g$ is the total number of genes (rows in the table).
+
+The basic way to compute counts per million reads is to divide each count by the libsum of the corresponding sample (column), and multiplying by 1 million for scaling purposes.
+
+$$cpm_{i,j} = \frac{n_{i,j}}{N_j} \cdot 1,000,000$$
+
+### Median-based standardization
+
+A well-known problem with this simple approach is that the libsum can be strongly influenced by outliers, i.e. a handful of genes which are represented by hundreds of millions of reads. 
+
+To circumvent this, one possibility is to use a more robust scaling factor for each sample, for example the median count, or the  $75^{th}$ percentile. 
+
+$$x'_{i,j} = \frac{x_{i,j}}{\text{median}(x_{.j})} \cdot \text{median}(x_{i,j})$$
+
 * * * * * * * * *
 
 ## Exercises
@@ -169,9 +209,43 @@ for (genotype in c("WT", "SNF2")) {
     e. Classical statistical estimates (mean, variance, standard deviation).
     f. Any other statistics that you moght find relevant.
 
+The result table must contain one row per sample (column of the original count table), and one column  per statistics (points a to f above). 
+
 2. Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
 
+```{r}
+
+## Compute the median per column
+median.per.column <- apply(counts, 2, median)
+median.count <- median(unlist(counts))
+
+## Compute the median-normalized counts
+counts.mednorm <- counts.epsilon
+for (j in 1:ncol(counts.mednorm)) {
+  counts.mednorm[,j] <-   counts.epsilon[,j] / median.per.column[j] * median.count
+}
+
+## Control: run the commented line before and check that all columns have the same median (they should, since we performed a median-based scaling).
+##       print(apply(counts.mednorm, 2, median))
+```
+
+
+```{r boxplots of log2-transformed median-based normalized count, fig.height=12, fig.width=8, fig.cap="Box plot of the  median-based normalized and log2-transformed counts. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
+
+counts.mednorm.log2 <- log2(counts.mednorm)
+for (genotype in c("WT", "SNF2")) {
+  boxplot(counts.mednorm.log2[,sample.description$genotype == genotype], 
+          horizontal = TRUE, las=2, col=color.code[genotype],
+          main=genotype,
+          xlab=paste(sep="", "median-based normalized log2(counts), with epsilon=", epsilon))
+}
+
+```
+
+
 3. Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
+
+
 
 4. Draw a plot to compare the mean expression per gene between WT and SNF2 genotypes. 
 
