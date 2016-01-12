@@ -217,18 +217,19 @@ Log2-transformed standardized counts may also be interesting for some clustering
 
 Compute a table with summary statistics per samples (columns of the count table). In particular, include in this table the following statistics. All statistics should be computed on both the raw counts and log2-transformed counts. 
 
-    a. Sum of counts in the sample.
-    b. Median count per sample.
-    c. Some illustrative percentiles (0=min, 5, 10, 25, 50, 75, 90, 95, 100=max)
-    d. Inter-Quartile Range (IQR).
-    e. Classical statistical estimates (mean, variance, standard deviation).
-    f. Any other statistics that you moght find relevant.
+a. Sum of counts in the sample.
+b. Median count per sample.
+c. Some illustrative percentiles (0=min, 5, 10, 25, 50, 75, 90, 95, 100=max)
+d. Inter-Quartile Range (IQR).
+e. Classical statistical estimates (mean, variance, standard deviation).
+f. Any other statistics that you moght find relevant.
 
 The result table must contain one row per sample (column of the original count table), and one column  per statistics (points a to f above). 
 
 ### Exercise 2. Sample-wise standardization
 
-Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
+a. Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
+b. Compare the scaling factors that would be applied with libsum and median-based standardization, respectively (draw a plot comparing the scaling factors for each sample). 
 
 ```{r}
 
@@ -250,14 +251,6 @@ counts.mednorm.log2 <- log2(counts.mednorm)
 
 ```
 
-#### Normalizing effect of the log2 transformation
-
-```{r plot histograms of log2-transformed versus raw counts, fig.width=12, fig.height=5}
-par(mfrow=c(1,2)) 
-hist(unlist(counts), breaks=20000, xlim=c(0,5000), main="Raw counts (truncated X axis)", col="#DDBBFF")
-hist(unlist(counts.mednorm.log2),  breaks=100, main="log2-transformed, median-normalized counts", col="#BBDDDD")
-par(mfrow=c(1,1))
-```
 
 #### Boxplots of sample-wise standardized counts (log2-transformed)
 
@@ -272,14 +265,25 @@ for (genotype in c("WT", "SNF2")) {
 
 ```
 
+### Exercise 3. Normalizing effect of the log2 transformation
 
-### Exercise 3. Statistics per gene (rows of the count table)
+Plot an histogram of the raw counts (all the table) versus log2-transformed median-based normalized counts.
+
+
+```{r plot histograms of log2-transformed versus raw counts, fig.width=12, fig.height=5}
+par(mfrow=c(1,2)) 
+hist(unlist(counts), breaks=20000, xlim=c(0,5000), main="Raw counts (truncated X axis)", col="#DDBBFF")
+hist(unlist(counts.mednorm.log2),  breaks=100, main="log2-transformed, median-normalized counts", col="#BBDDDD")
+par(mfrow=c(1,1))
+```
+
+### Exercise 4. Statistics per gene (rows of the count table)
 
 Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
 
 
 
-### Exercise 4. Comparison between WT and mutant genotypes
+### Exercise 5. Comparison between WT and mutant genotypes
 
 a. Compute the mean counts per gene for each genotype, using the median-based standardized log2-transformed counts. 
 b. Draw a plot to compare the mean expression per gene between WT and SNF2 genotypes. 
