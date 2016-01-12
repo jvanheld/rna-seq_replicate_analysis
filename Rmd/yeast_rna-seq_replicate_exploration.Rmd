@@ -3,15 +3,15 @@ title: "Exploring RNA-seq data from Gierlinski, Schurch and Barton"
 author: "Mustafa Abu El-Qumsan & Jacques van Helden"
 date: '`r Sys.Date()`'
 output:
-  pdf_document:
-    fig_caption: yes
-    highlight: zenburn
-    toc: yes
-    toc_depth: 3
   html_document:
     fig_caption: yes
     highlight: zenburn
     theme: cerulean
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
     toc: yes
     toc_depth: 3
   word_document: default
@@ -204,11 +204,18 @@ Normalized log2-transformed counts are very  convenient for display purposes (e.
 
 **However**, they cannot be used for all purposes. Indeed, the normalization procedure converts integer counts into fractional numbers, which do not comply with the probabilistic models underlying manysome of the statistical tests that are performed on these datasets. In particular, the most popular packages for differential  analysis with RNA-seq expect to take as input a table with raw counts. 
 
+The log2 transformation completely modifies the nature of the data, and completely change the scale of the counts. Consequently, log2-transformed data should not be used either as input for the classical differential analysis packages. 
+
+Log2-transformed standardized counts may also be interesting for some clustering or classification purposes, because they will strongly reduce the dynamic range of the data, and the *log2 transformation has a normalizing effect* (this is a general effect) that may contribute to increase the suitedness of the data for some analysis methods (e.g. PCA, clustering, discriminant analysis, ...). We will investigate this very soon. 
+
+
 * * * * * * * * *
 
 ## Exercises
 
-1. Compute a table with summary statistics per samples (columns of the count table). In particular, include in this table the following statistics. All statistics should be computed on both the raw counts and log2-transformed counts. 
+### Exercise 1. Summary statistics
+
+Compute a table with summary statistics per samples (columns of the count table). In particular, include in this table the following statistics. All statistics should be computed on both the raw counts and log2-transformed counts. 
 
     a. Sum of counts in the sample.
     b. Median count per sample.
@@ -219,7 +226,9 @@ Normalized log2-transformed counts are very  convenient for display purposes (e.
 
 The result table must contain one row per sample (column of the original count table), and one column  per statistics (points a to f above). 
 
-2. Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
+### Exercise 2. Sample-wise standardization
+
+Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
 
 ```{r}
 
@@ -235,12 +244,25 @@ for (j in 1:ncol(counts.mednorm)) {
 
 ## Control: run the commented line before and check that all columns have the same median (they should, since we performed a median-based scaling).
 ##       print(apply(counts.mednorm, 2, median))
+
+## Compute the log2-transformed counts after median-based standardization
+counts.mednorm.log2 <- log2(counts.mednorm)
+
 ```
 
+#### Normalizing effect of the log2 transformation
+
+```{r plot histograms of log2-transformed versus raw counts, fig.width=12, fig.height=5}
+par(mfrow=c(1,2)) 
+hist(unlist(counts), breaks=20000, xlim=c(0,5000), main="Raw counts (truncated X axis)", col="#DDBBFF")
+hist(unlist(counts.mednorm.log2),  breaks=100, main="log2-transformed, median-normalized counts", col="#BBDDDD")
+par(mfrow=c(1,1))
+```
+
+#### Boxplots of sample-wise standardized counts (log2-transformed)
 
 ```{r boxplots of log2-transformed median-based normalized count, fig.height=12, fig.width=8, fig.cap="Box plot of the  median-based normalized and log2-transformed counts. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
 
-counts.mednorm.log2 <- log2(counts.mednorm)
 for (genotype in c("WT", "SNF2")) {
   boxplot(counts.mednorm.log2[,sample.description$genotype == genotype], 
           horizontal = TRUE, las=2, col=color.code[genotype],
@@ -251,11 +273,16 @@ for (genotype in c("WT", "SNF2")) {
 ```
 
 
-3. Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
+### Exercise 3. Statistics per gene (rows of the count table)
+
+Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
 
 
 
-4. Draw a plot to compare the mean expression per gene between WT and SNF2 genotypes. 
+### Exercise 4. Comparison between WT and mutant genotypes
+
+a. Compute the mean counts per gene for each genotype, using the median-based standardized log2-transformed counts. 
+b. Draw a plot to compare the mean expression per gene between WT and SNF2 genotypes. 
 
 
 
