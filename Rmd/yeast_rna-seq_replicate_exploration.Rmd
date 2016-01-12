@@ -3,15 +3,15 @@ title: "Exploring RNA-seq data from Gierlinski, Schurch and Barton"
 author: "Mustafa Abu El-Qumsan & Jacques van Helden"
 date: '`r Sys.Date()`'
 output:
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: 3
   html_document:
     fig_caption: yes
     highlight: zenburn
     theme: cerulean
-    toc: yes
-    toc_depth: 3
-  pdf_document:
-    fig_caption: yes
-    highlight: zenburn
     toc: yes
     toc_depth: 3
   word_document: default
@@ -195,6 +195,14 @@ A well-known problem with this simple approach is that the libsum can be strongl
 To circumvent this, one possibility is to use a more robust scaling factor for each sample, for example the median count, or the  $75^{th}$ percentile. 
 
 $$x'_{i,j} = \frac{x_{i,j}}{\text{median}(x_{.j})} \cdot \text{median}(x_{i,j})$$
+
+
+
+### When should we use / not use normalized counts?
+
+Normalized log2-transformed counts are very  convenient for display purposes (e.g. to compare the read density between samples or between conditions). 
+
+**However**, they cannot be used for all purposes. Indeed, the normalization procedure converts integer counts into fractional numbers, which do not comply with the probabilistic models underlying manysome of the statistical tests that are performed on these datasets. In particular, the most popular packages for differential  analysis with RNA-seq expect to take as input a table with raw counts. 
 
 * * * * * * * * *
 
