@@ -43,6 +43,8 @@ The goal of this tutorial is to get familiar with RNA-seq data:
 - do some exploratory statistics about these counts per gene (distributions, histograms, ...)
 
 
+
+
 ### Data source
 
 1. Gierliński,M., Cole,C., Schofield,P., Schurch,N.J., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G., Owen-Hughes,T., et al. (2015) Statistical models for RNA-seq data derived from a two-condition 48-replicate experiment. Bioinformatics, 10.1093/bioinformatics/btv425.
@@ -65,6 +67,8 @@ Fastq files: <http://www.ebi.ac.uk/ena/data/view/ERP004763>
 We will now load the two read count tables (WT and Snf2 mutants respectively).
 
 ```{r data loading}
+
+## Load two tables containing the counts per gene for the wild-type (WT) and for the mutant (Snf2) strains, respectively. 
 dir.counts <- file.path(dir.base, "data/counts_per_gene")
 counts.wt <- read.delim(file=file.path(dir.counts, "WT_raw.tsv"), row.names = 1)
 names(counts.wt) <- paste(sep=".", "WT", 1:ncol(counts.wt))
@@ -103,8 +107,11 @@ counts <- cbind(counts.wt, counts.snf2)
 
 ## Sample description table
 sample.description <- data.frame(
+  row.names = names(counts),
   genotype = c(rep("WT", times=ncol(counts.wt)), 
-               rep("SNF2", times=ncol(counts.snf2))))
+               rep("SNF2", times=ncol(counts.snf2))),
+  replicate = c(1:48, 1:48)
+  )
 
 ## Associate one specific color to each genotype
 color.code <- c("WT"="#BBBBDD", "SNF2"="#FFBBBB")
@@ -122,6 +129,53 @@ The tables *counts.wt* and *counts.snf2* contain the read counts per gene for th
 | Snf2 | `r nrow(counts.snf2)` |  `r ncol(counts.snf2)` |
 | All | `r nrow(counts)` | `r ncol(counts)` |
 | | |
+
+
+## Summary of counts per sample (column)
+
+We will use the function *summary()* to compute descriptie statistics for each column of the count table. 
+
+```{r summary of  the counts}
+summary(counts)
+
+```
+
+We can immediately draw some observations from these summaries. 
+
+- **min**: in each column, the mean is 0. This corresponds to genes that were undetected: apparently these genes are either not transcribed, or they are transcribed at a weak level so that they were not sequenced in the library. 
+
+- **Mean**: in this experiment the mean counts per gene are of the order of 1000 counts per gene for each biological sample. 
+
+- **max* The max count is immensely larger than the mean counts, and this is true for each column. This observation is very general with RNA-seq data: in all the cases I have studied so far, we detect a very few genes having a huge number of counts. 
+
+- **median** is the count value that splits the sorted values in two. Half of the values of a column are smaller than or equal to the median. 
+
+
+## Number of undetected genes per sample
+
+We would like to count the number of undetected genes per sample, i.e. genes having zero counts. 
+
+```{r undetected_genes}
+## Count the number of undetected genes for each sample
+undetected.genes.per.sample <- apply(counts == 0, 2, sum)
+
+## Count the number of samples where each gene has not been detected
+undetected.samples.per.gene <- apply(counts == 0, 1, sum)
+hist(undetected.samples.per.gene, breaks=0:ncol(counts), col="grey", ylim=c(0,300),
+     main="Samples with zero counts per gene",
+     xlab="Number of samples with 0 counts",
+     ylab="Number of genes (truncated axis)"
+  )
+
+## Compare the number of undetected samples between the two groups
+undetected.samples.per.gene.wt <- apply(counts.wt == 0, 1, sum)
+undetected.samples.per.gene.snf2 <- apply(counts.snf2 == 0, 1, sum)
+plot(undetected.samples.per.gene.wt, undetected.samples.per.gene.snf2,
+     main="Undetected genes in WT versus Snf2 samples",
+     xlab="WT samples with zero counts",
+     ylab="SNf2 samples with zero counts")
+
+```
 
 
 ## Compute the log-transformed counts
@@ -281,6 +335,9 @@ par(mfrow=c(1,1))
 
 Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
 
+```{r stats_per_gene}
+
+```
 
 
 ### Exercise 5. Comparison between WT and mutant genotypes
@@ -289,6 +346,9 @@ a. Compute the mean counts per gene for each genotype, using the median-based st
 b. Draw a plot to compare the mean expression per gene between WT and SNF2 genotypes. 
 
 
+```{r wt_vs_snf2_means_plot}
+
+```
 
 
 
