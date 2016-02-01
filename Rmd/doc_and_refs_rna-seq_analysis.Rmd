@@ -1,0 +1,95 @@
+---
+title: "Doc_and_references_RNA-seq_analysis"
+author: "Jacques van Helden"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    fig_caption: yes
+    highlight: zenburn
+    theme: cerulean
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: 3
+  word_document: default
+---
+
+
+# Summary of your bibliographic investigation about RNA-seq
+
+## Distributions of values between microarrays  and RNA-seq
+
+-	Microarrays: continuous, many  models assume a normal distribution (people apply Student, welch test, …)
+
+-	Rna-Seq, discrete distributions (counts of reads per gene). Commonly modelled with negative binomial. 
+
+Initially,; people thought that the RNA-seq data could be modelled with a Poisson distribution. 
+However they realised that in most cases the variance of a gene is much higher than the mean. 
+
+We know that in Poisson distribution, the variance equals the mean (by definition). The Poisson was thus not appropriate to model RNA-seq data. 
+Then people proposed the negative binomial. 
+
+
+## Why is the negative binomial suitable to model RNA-seq ? 
+
+### Poisson
+
+ defined by  a single parameter: the expected number of successes (lambda). 
+By definition we have
+	variance = lambda
+
+### Binomial: two parameters
+
+$n$ = number of trials
+
+$p$ = probability of success at each trial
+
+By definition, in the binomial : 
+
+$\mu = <x> = n \cdot p$
+
+$\sigma^2 = n \cdot p \cdot (1 - p)$
+
+Since p is always comprised between 0 and 1, then q = 1 - p must also be comprised between 0 and 1. 
+
+This means that the variance of a binomial will always be lower than or equal to its mean.
+
+$$\sigma^2 = n \cdot p \cdot (1 - p) \le n \cdot p  = \mu $$
+
+
+### Negative binomial
+
+The negative binomial is defined by three parameters. It has a variance larger than or equal to the mean. There is an independent parameter permitting to tune the variance according to the estimation made from the data.  To estimate the parameters of this negative binomial, some software tools like *DESeq2* and *edgeR* rely on a Geleralized Linear Model (GLM). 
+
+$ldots$ to be completed
+
+- schrinkage: since we generally don't dispose of a sufficient number of genes to estiamte the variance in a gene-wise way, most packages  fallback on a schrinkage approac, which consists in estimating the variance of a gene based on a set of genes having more or less the same mean. This approach sounds a bit inappropriate to me , because we loose what we are aiming at: estiamting a gene-specific dispersion. But if the data is insufficient to do better, we can assume that we use this fallback approach. 
+
+- $ldots$
+
+
+
+## How to choose between DESeq2 and edgeR
+
+The two most popular packages to detect differentially expressed genes from RNA-seq data are *edgeR* an *DESeq2*. Iterestingly, these two programs return different gene sets when the same count tables are submitted. 
+
+## References
+
+### Comparisons between differential expression tools
+
+1. Lin,Y., Golovnina,K., Chen,Z.-X., Lee,H.N., Negron,Y.L.S., Sultana,H., Oliver,B. and Harbison,S.T. (2016) Comparison of normalization and differential expression analyses using RNA-Seq data from 726 individual Drosophila melanogaster. BMC Genomics, 17.
+
+2. Gierliński,M., Cole,C., Schofield,P., Schurch,N.J., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G., Owen-Hughes,T., et al. (2015) Statistical models for RNA-seq data derived from a two-condition 48-replicate experiment. Bioinformatics, 10.1093/bioinformatics/btv425.
+
+3. Schurch,N.J., Schofield,P., Gierliński,M., Cole,C., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G.G., Owen-Hughes,T., et al. (2015) Evaluation of tools for differential gene expression analysis by RNA-seq on a 48 biological replicate experiment. arXiv.
+
+4. Rajkumar,A.P., Qvist,P., Lazarus,R., Lescai,F., Ju,J., Nyegaard,M., Mors,O., Børglum,A.D., Li,Q. and Christensen,J.H. (2015) Experimental validation of methods for differential gene expression analysis and sample pooling in RNA-seq. BMC Genomics, 16, 548.
+
+5. Ching,T., Huang,S. and Garmire,L.X. (2014) Power analysis and sample size estimation for RNA-Seq differential expression. RNA, 20, 1684–1696.
+
+6. Zhang,Z.H., Jhaveri,D.J., Marshall,V.M., Bauer,D.C., Edson,J., Narayanan,R.K., Robinson,G.J., Lundberg,A.E., Bartlett,P.F., Wray,N.R., et al. (2014) A comparative study of techniques for differential expression analysis on RNA-Seq data. PLoS ONE, 9, e103207.
+  
+
