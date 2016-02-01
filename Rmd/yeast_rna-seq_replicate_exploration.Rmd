@@ -166,15 +166,23 @@ hist(undetected.samples.per.gene, breaks=0:ncol(counts), col="grey", ylim=c(0,30
      xlab="Number of samples with 0 counts",
      ylab="Number of genes (truncated axis)"
   )
+```
 
-## Compare the number of undetected samples between the two groups
-undetected.samples.per.gene.wt <- apply(counts.wt == 0, 1, sum)
-undetected.samples.per.gene.snf2 <- apply(counts.snf2 == 0, 1, sum)
-plot(undetected.samples.per.gene.wt, undetected.samples.per.gene.snf2,
-     main="Undetected genes in WT versus Snf2 samples",
+```{r WT vs Snf2 undetected}
+
+## Compare the number of samples where each gene was detected in the two groups
+detected.samples.per.gene.wt <- apply(counts.wt >= 1, 1, sum)
+detected.samples.per.gene.snf2 <- apply(counts.snf2 >= 1, 1, sum)
+plot(detected.samples.per.gene.wt, detected.samples.per.gene.snf2,
+     main="detected genes in WT versus Snf2 samples",
      xlab="WT samples with zero counts",
-     ylab="SNf2 samples with zero counts")
+     ylab="SNf2 samples with zero counts",
+     panel.first=grid(col="blue"))
+abline(a=0, b=1, col="darkgreen")
 
+## Highlight the Snf2 gene on the plot
+points(detected.samples.per.gene.wt["yor290c"], 
+       detected.samples.per.gene.snf2["yor290c"], col="red")
 ```
 
 
@@ -331,6 +339,9 @@ hist(unlist(counts.mednorm.log2),  breaks=100, main="log2-transformed, median-no
 par(mfrow=c(1,1))
 ```
 
+
+This distribution deos not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in two different samples, and which follows its own distribution. The histograms above can thus be understood as a mixture of ~7000 (number of genes) times 2 (nuber of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
+
 ### Exercise 4. Statistics per gene (rows of the count table)
 
 Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
@@ -351,4 +362,13 @@ b. Draw a plot to compare the mean expression per gene between WT and SNF2 genot
 ```
 
 
+## Next steps
+
+
+1. Do the exercises above (exploration of the data)
+2. Learn to use the *DESeq2* and *edgeR* packages by using the Vignettes. 
+3. Run DESeq2 and edgeR on the yeast dataset, in order to detect differentially expressed genes between WT and Snf2. 
+4. After that, you will analyse the robustness of the lists of differentially expressed genes by running resampling approaches (bootstrap, jacknife, subsampling). 
+
+Regularly we discuss about the results and interpret. 
 
