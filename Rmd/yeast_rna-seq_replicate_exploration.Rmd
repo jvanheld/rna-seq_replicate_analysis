@@ -15,6 +15,7 @@ output:
     toc: yes
     toc_depth: 3
   word_document: default
+bibliography: bibliography_rna-seq.bib
 ---
 
 * * * * * * 
@@ -47,8 +48,20 @@ The goal of this tutorial is to get familiar with RNA-seq data:
 
 ### Data source
 
+[@Gierlinski:2015jt]
+
 1. Gierliński,M., Cole,C., Schofield,P., Schurch,N.J., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G., Owen-Hughes,T., et al. (2015) Statistical models for RNA-seq data derived from a two-condition 48-replicate experiment. Bioinformatics, 10.1093/bioinformatics/btv425.
+
+
+[@Schurch:2015vk]
+
 2. Schurch,N.J., Schofield,P., Gierliński,M., Cole,C., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G.G., Owen-Hughes,T., et al. (2015) Evaluation of tools for differential gene expression analysis by RNA-seq on a 48 biological replicate experiment. arXiv.
+
+
+### Methods
+
+
+[@Fang:2012fg] compares different statistical models and tests (Poisson, Fisher, negative binomial, ...) for the detection of differentially expressed genes. 
 
 #### Full original datasets (>300 fastq files !)
 
@@ -75,6 +88,8 @@ names(counts.wt) <- paste(sep=".", "WT", 1:ncol(counts.wt))
 
 counts.snf2 <- read.delim(file=file.path(dir.counts, "Snf2_raw.tsv"), row.names = 1)
 names(counts.snf2) <- paste(sep=".", "SNF2", 1:ncol(counts.snf2))
+
+sample.groups <-c("WT", "Snf2")
 
 ```
 
@@ -133,11 +148,10 @@ The tables *counts.wt* and *counts.snf2* contain the read counts per gene for th
 
 ## Summary of counts per sample (column)
 
-We will use the function *summary()* to compute descriptie statistics for each column of the count table. 
+We could use the function *summary()* to compute descriptie statistics for each column of the count table. 
 
 ```{r summary of  the counts}
-summary(counts)
-
+## summary(counts) ## This takes too much place for a report
 ```
 
 We can immediately draw some observations from these summaries. 
@@ -340,15 +354,21 @@ par(mfrow=c(1,1))
 ```
 
 
-This distribution deos not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in two different samples, and which follows its own distribution. The histograms above can thus be understood as a mixture of ~7000 (number of genes) times 2 (nuber of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
+This distribution does not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in two different samples, and which follows its own distribution. The histograms above can thus be understood as a mixture of ~7000 (number of genes) times 2 (nuber of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
 
 ### Exercise 4. Statistics per gene (rows of the count table)
 
 Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
 
 ```{r stats_per_gene}
-
+stats.per.gene <- data.frame(
+  mean= apply(counts, 1, mean),
+  median= apply(counts, 1, median),
+  min= apply(counts, 1, min),
+  max= apply(counts, 1, max)
+  )
 ```
+
 
 
 ### Exercise 5. Comparison between WT and mutant genotypes
@@ -357,7 +377,43 @@ a. Compute the mean counts per gene for each genotype, using the median-based st
 b. Draw a plot to compare the mean expression per gene between WT and SNF2 genotypes. 
 
 
-```{r wt_vs_snf2_means_plot}
+
+```{r fig.width=7, fig.height=7, fig.cap="Comparison of mean read counts per gene between the two genotypes. Note that this drawing is very preliminary, since we did not yet normalize the libraries. It is just to get a rough idea. "}
+
+## Compute mean counts per sample class for each gene
+stats.per.gene$WT.mean <- apply(counts.wt, 1, mean)
+stats.per.gene$Snf2.mean <- apply(counts.snf2, 1, mean)
+
+## Compute, for each gene, the mean value for each of the two groups
+plot(stats.per.gene$WT.mean, stats.per.gene$Snf2.mean,
+     main="Mean read counts per gene",
+     xlab="WT genotype",
+     ylab="Snf2 genotype"
+    )
+grid(col="blue")
+
+```
+
+
+### Log2 mean values
+
+We can also  draw a plot with the mean of the log2-transformed counts. 
+Note that the arithmetic mean of the logarithms is equivalent to the logarithm of the geometric mean. 
+
+$$\frac{1}{n}\sum_{j=1}^{n}{log_2(x_{i,j})} = log_2(\sqrt[n]]{\prod_{j=1}^{n}{x_{i,j}}})$$
+
+```{r fig.width=7, fig.height=7, fig.cap="Comparison of mean read log2(counts) per gene between the two genotypes. Note that this drawing is very preliminary, since we did not yet normalize the libraries. It is just to get a rough idea. "}
+
+## Compute mean counts per sample class for each gene
+stats.per.gene$WT.log2.mean <- apply(counts.log2[, sample.description$genotype=="WT"], 1, mean)
+stats.per.gene$Snf2.log2.mean <- apply(counts.log2[, sample.description$genotype=="SNF2"], 1, mean)
+
+plot(stats.per.gene$WT.log2.mean, stats.per.gene$Snf2.log2.mean,
+     main="Mean read counts per gene",
+     xlab="WT genotype",
+     ylab="Snf2 genotype"
+    )
+grid(col="blue")
 
 ```
 
@@ -372,3 +428,4 @@ b. Draw a plot to compare the mean expression per gene between WT and SNF2 genot
 
 Regularly we discuss about the results and interpret. 
 
+## References
