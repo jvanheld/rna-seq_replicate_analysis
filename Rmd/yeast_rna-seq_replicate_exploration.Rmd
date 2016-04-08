@@ -28,11 +28,28 @@ knitr::opts_chunk$set(echo=FALSE, eval=TRUE, cache=FALSE, message=FALSE, warning
 ```
 
 
+
 ```{r execution parameters}
+
+## The variable dir.base should be adapted to indicate the path of the
+## rna-seq_replicate_analysis clone on your computer. 
+## All other directories and files are defined relative to this base directory. 
 dir.base <- "~/rna-seq_replicate_analysis"
 setwd(dir.base)
 
+
+
+## Load required libraries
+source(file.path(dir.base, 'R-scripts/install_required_libraries.R'))
+
+## Define and check output directories
+dir.results <- file.path(dir.base, "results")
+dir.create(dir.results, showWarnings = FALSE, recursive = TRUE)
+dir.figures <- file.path(dir.base, "figures")
+dir.create(dir.figures, showWarnings = FALSE, recursive = TRUE)
+
 ```
+
 
 
 ## Introduction
@@ -61,9 +78,9 @@ The goal of this tutorial is to get familiar with RNA-seq data:
 ### Methods
 
 
-[@Fang:2012fg] compares different statistical models and tests (Poisson, Fisher, negative binomial, ...) for the detection of differentially expressed genes. 
+Fang and coworkers [-@Fang:2012fg] compares different statistical models and tests (Poisson, Fisher, negative binomial, ...) for the detection of differentially expressed genes. 
 
-#### Full original datasets (>300 fastq files !)
+#### Full original datasets (beware, there are 672 fastq files !)
 
 Data shared at ENA: <https://figshare.com/articles/Metadata_for_a_highly_replicated_two_condition_yeast_RNAseq_experiment_/1416210>
 
@@ -222,9 +239,10 @@ counts.log2 <- log2(counts.epsilon)
 
 ## Box plots
 
-We would like to draw box plots of the counts per genes.
 
-```{r boxplots of log2-transformed count, fig.height=12, fig.width=8, fig.cap="Box plot of the log2-transformed counts per sample. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
+The boxplots below summarizes the distribution of log2-transformed counts per genes for each sample. 
+
+```{r boxplots of log2-transformed count, fig.height=12, fig.width=6, fig.cap="Box plot of the log2-transformed counts per sample. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
 
 for (genotype in c("WT", "SNF2")) {
   boxplot(counts.log2[,sample.description$genotype == genotype], 
@@ -304,22 +322,47 @@ f. Any other statistics that you moght find relevant.
 
 The result table must contain one row per sample (column of the original count table), and one column  per statistics (points a to f above). 
 
+Hereafter we only display the results for the 10 first samples (columns of the table), for the sake of readibility of the report. However we also calculate the same statistics for each one of the samples (the full table of statistics will be exported in a tab-separated value file).
+
+
 ```{r summary ststistics per sample NEW NEW}
-## compute quantile  
-apply(counts, 2, quantile, c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99, 1))
-## sum of counts in sample  Introduction to differential gene expression analysis using RNA-seq
-apply(counts, 2, sum) 
-## Median count per sample 
-apply(counts, 2, median )
-## estimate of inter-Quartile Range (IQR)
-apply(counts, 2, FUN = IQR)
-##  Classical statistical estimates
-summary(counts)
+
+
+## Prepare a data frame to store the statistics per sample
+
+
+## Collact sample-wise statistics in a data frame
+stats.per.sample <- data.frame(
+  mean = apply(counts, 2, mean),
+  sd = apply(counts, 2, sd),
+  var = apply(counts, 2, var),
+  min = apply(counts, 2, min),
+  median = apply(counts, 2, median),
+  max = apply(counts, 2, max),
+  sum = apply(counts, 2, sum),
+  IQR=apply(counts, 2, IQR)
+)
+
+selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99, 1)
+sample.quantiles <-  round(t(apply(counts, 2, quantile, selected.quantiles)), digits=1)
+colnames(sample.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
+stats.per.sample <- cbind(stats.per.sample, sample.quantiles)
+
+# View(stats.per.sample)
+
+## Export the full table with statistics per sample
+write.table(x = stats.per.sample, sep="\t", quote = FALSE, col.names=NA,
+            file = file.path(dir.results, "stats_per_sample.tab"))
+
+
+## Print the 10 first rows of the table in markdown format so that it will be nicely displayed in the HTML report
+knitr::kable(t(stats.per.sample[1:10,]))
 
 ```
 
-
 ### Exercise 2. Sample-wise standardization
+
+In this exercise we apply a simplistic method to standardize samples. Note that specialized packages like edgeR and DESeq2 have much more elaborate (and relevant) normalization procedures. This simplistic normalization is only for didactic purposes. 
 
 a. Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
 b. Compare the scaling factors that would be applied with libsum and median-based standardization, respectively (draw a plot comparing the scaling factors for each sample). 
@@ -375,32 +418,22 @@ This distribution does not look like any conventional distribution, but this is 
 
 ### Exercise 4. Statistics per gene (rows of the count table)
 
-Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
+Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, min, median, max, IQR, and a few selected quantiles (0, 0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.95, 0.99, 1), ...
+
+<font color="red">
+**Mustafa: please do the same as what we did above for the samples (columns of the count table), but apply it to genes (rows of the count table).
+</font>
 
 ```{r stats_per_gene}
-<<<<<<< HEAD
+
+## Compute
 stats.per.gene <- data.frame(
   mean= apply(counts, 1, mean),
   median= apply(counts, 1, median),
   min= apply(counts, 1, min),
   max= apply(counts, 1, max)
   )
-=======
-## sum of count in log2-transformed count per gen
-apply(counts.log2, 1,sum )
 
-## Median of count in log2-transformed count per gene
-apply(counts.log2, 1,median)
-
-## percintile of Rows in log2-transformed count per gene
-apply(counts.log2, 1, quantile, c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95, 0.99, 1 ))
-
-## estimete inter-Qurtile Range in log-trasformed count per gene
-apply(counts.log2, 1, FUN = IQR)
-
-## classical Statisticla estimate 
-summary(counts.log2)
->>>>>>> e7dbfb91d661dc71f75dd62e4063b282cc0dc3f0
 ```
 
 
@@ -419,12 +452,19 @@ stats.per.gene$WT.mean <- apply(counts.wt, 1, mean)
 stats.per.gene$Snf2.mean <- apply(counts.snf2, 1, mean)
 
 ## Compute, for each gene, the mean value for each of the two groups
+## We define colors with the 6 hexadecimal numbers 
+## (ex: http://coolmaxhot.com/graphics/hex-color-palette.htm)
+## see also https://terpconnect.umd.edu/~toh/ColorLesson/ for explanation of color perception
 plot(stats.per.gene$WT.mean, stats.per.gene$Snf2.mean,
      main="Mean read counts per gene",
+     col="#006688",
      xlab="WT genotype",
      ylab="Snf2 genotype"
     )
 grid(col="blue")
+abline(col="brown", a=0, b=1) ## Draw a diagonal (slope=1, intercept=0)
+abline(h=0, col="black") # Draw an horizontal line to mark X axis
+abline(v=0, col="black") # Draw a vertical line to mark Y axis
 
 ```
 
@@ -443,10 +483,14 @@ stats.per.gene$WT.log2.mean <- apply(counts.log2[, sample.description$genotype==
 stats.per.gene$Snf2.log2.mean <- apply(counts.log2[, sample.description$genotype=="SNF2"], 1, mean)
 
 plot(stats.per.gene$WT.log2.mean, stats.per.gene$Snf2.log2.mean,
-     main="Mean read counts per gene",
-     xlab="WT genotype",
-     ylab="Snf2 genotype"
+     main="Mean log2-transformed read counts per gene",
+     col="#008844",
+     xlab="WT genotype; log2(counts)",
+     ylab="Snf2 genotype; log2(counts)"
     )
+abline(a=0,b=1, col="#FF0066", lwd=2)
+abline(v=0, col="black")
+abline(h=0, col="black")
 grid(col="blue")
 
 ```
@@ -462,9 +506,6 @@ grid(col="blue")
 
 Regularly we discuss about the results and interpret. 
 
-<<<<<<< HEAD
-## References
-=======
 ```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
 dim(counts)
 cds<-DGEList(counts)
@@ -519,7 +560,9 @@ meanVarPlot <- plotMeanVar(cds, show.raw.vars = TRUE ,
 
 ```{r Visualizing Resulats}
 par(mfrow=c(3 ,1))
-hist()
+#hist()
 ```
 
->>>>>>> e7dbfb91d661dc71f75dd62e4063b282cc0dc3f0
+
+
+## References
