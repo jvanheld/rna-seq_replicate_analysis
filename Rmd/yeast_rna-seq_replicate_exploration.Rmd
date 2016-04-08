@@ -274,6 +274,8 @@ $$x'_{i,j} = \frac{x_{i,j}}{\text{median}(x_{.j})} \cdot \text{median}(x_{i,j})$
 
 
 
+
+
 ### When should we use / not use normalized counts?
 
 Normalized log2-transformed counts are very  convenient for display purposes (e.g. to compare the read density between samples or between conditions). 
@@ -301,6 +303,21 @@ e. Classical statistical estimates (mean, variance, standard deviation).
 f. Any other statistics that you moght find relevant.
 
 The result table must contain one row per sample (column of the original count table), and one column  per statistics (points a to f above). 
+
+```{r summary ststistics per sample NEW NEW}
+## compute quantile  
+apply(counts, 2, quantile, c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99, 1))
+## sum of counts in sample  Introduction to differential gene expression analysis using RNA-seq
+apply(counts, 2, sum) 
+## Median count per sample 
+apply(counts, 2, median )
+## estimate of inter-Quartile Range (IQR)
+apply(counts, 2, FUN = IQR)
+##  Classical statistical estimates
+summary(counts)
+
+```
+
 
 ### Exercise 2. Sample-wise standardization
 
@@ -330,7 +347,7 @@ counts.mednorm.log2 <- log2(counts.mednorm)
 
 #### Boxplots of sample-wise standardized counts (log2-transformed)
 
-```{r boxplots of log2-transformed median-based normalized count, fig.height=12, fig.width=8, fig.cap="Box plot of the  median-based normalized and log2-transformed counts. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
+```{r boxplots of log2-transformed median-based normalized count, fig.height=12, fig.width=8, fig.cap="Box plot of the  median-based normalized and log2-Introduction to differential gene expression analysis using RNA-seqtransformed counts. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
 
 for (genotype in c("WT", "SNF2")) {
   boxplot(counts.mednorm.log2[,sample.description$genotype == genotype], 
@@ -361,12 +378,29 @@ This distribution does not look like any conventional distribution, but this is 
 Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, median, percentiles 25 and 75, iqr, ...
 
 ```{r stats_per_gene}
+<<<<<<< HEAD
 stats.per.gene <- data.frame(
   mean= apply(counts, 1, mean),
   median= apply(counts, 1, median),
   min= apply(counts, 1, min),
   max= apply(counts, 1, max)
   )
+=======
+## sum of count in log2-transformed count per gen
+apply(counts.log2, 1,sum )
+
+## Median of count in log2-transformed count per gene
+apply(counts.log2, 1,median)
+
+## percintile of Rows in log2-transformed count per gene
+apply(counts.log2, 1, quantile, c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95, 0.99, 1 ))
+
+## estimete inter-Qurtile Range in log-trasformed count per gene
+apply(counts.log2, 1, FUN = IQR)
+
+## classical Statisticla estimate 
+summary(counts.log2)
+>>>>>>> e7dbfb91d661dc71f75dd62e4063b282cc0dc3f0
 ```
 
 
@@ -428,4 +462,64 @@ grid(col="blue")
 
 Regularly we discuss about the results and interpret. 
 
+<<<<<<< HEAD
 ## References
+=======
+```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
+dim(counts)
+cds<-DGEList(counts)
+names(cds)
+head(cds$counts)
+cds$samples 
+sum(cds$all.zeros)
+dim(cds)
+
+cds <- cds[rowSums(1e+06 * cds$counts/expandAsMatrix(cds$samples$lib.size, dim(cds)) > 1) >= 3, ]
+dim(cds)
+cds <- calcNormFactors(cds)
+cds$samples
+cds$counts
+cds$samples$lib.size * cds$samples$norm.factors
+```    
+
+```{r we need to plot measures the similarity of the samples by using Multi-Dimensional Scalling Plot}
+plotMDS( cds , main = "MDS Plot for Count Data", labels = colnames( cds$counts ) )
+```
+
+```{r now we Estimating Dispersions }
+## to calculate a commen dispersion, each gene gets assigned the same dispersion estimate 
+cds <- estimateCommonDisp( cds )
+names(cds)
+cds$common.dispersion 
+
+## the implied standerd deviation are the squere-roots of the Variances
+SD <- sd(cds$counts)
+sqrt(SD)
+
+cds <- estimateTagwiseDisp(cds, prior.df =   10)
+summary(cds$tagwise.dispersion)
+## More shrinkage / Sqeezing toward the common 
+cds <- estimateTagwiseDisp(cds , prior.df = 25)
+summary(cds$tagwise.dispersion)
+```
+
+```{r Plotting the Mean-Variance relationship }
+meanVarPlot <- plotMeanVar(cds, show.raw.vars = TRUE ,
+                           show.tagwise.vars = TRUE   ,
+                           show.binned.common.disp.vars = TRUE ,
+                           show.ave.raw.vars = FALSE ,
+                           dispersion.method = "qcml" , NBline = TRUE,
+                           nbins = 100 ,
+                           pch = 16 ,
+                           xlab = "Mean Expression (Log10 Scale)" ,
+                           ylab = "Variance (Log10 Scale)",
+                           main = "Mean- Variance Plot")
+
+```
+
+```{r Visualizing Resulats}
+par(mfrow=c(3 ,1))
+hist()
+```
+
+>>>>>>> e7dbfb91d661dc71f75dd62e4063b282cc0dc3f0
