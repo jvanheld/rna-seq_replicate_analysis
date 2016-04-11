@@ -367,7 +367,7 @@ In this exercise we apply a simplistic method to standardize samples. Note that 
 a. Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
 b. Compare the scaling factors that would be applied with libsum and median-based standardization, respectively (draw a plot comparing the scaling factors for each sample). 
 
-```{r}
+```{r statistics per Sample}
 
 ## Compute the median per column
 median.per.column <- apply(counts, 2, median)
@@ -434,6 +434,38 @@ stats.per.gene <- data.frame(
   max= apply(counts, 1, max)
   )
 
+
+median.per.gene<- apply(counts, 1, median)
+median.count <- median(unlist(counts))
+
+## Compute the median-normalized counts
+counts.epsilon [1:5,1:5]
+counts.mednorm <- counts.epsilon
+
+for (j in 1:ncol(counts.mednorm)) {
+  counts.mednorm[,j] <-   counts.epsilon[,j] / median.per.gene[j] * median.count
+}
+
+## Control: run the commented line before and check that all columns have the same median (they should, since we performed a median-based scaling).
+##       print(apply(counts.mednorm, 2, median))
+
+## Compute the log2-transformed counts after median-based standardization
+counts.mednorm.log2 <- log2(counts.mednorm)
+
+selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99, 1)
+gene.quantiles <-  round(t(apply(counts, 1, quantile, selected.quantiles)), digits=1)
+rownames(gene.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
+stats.per.gene <- cbind(stats.per.gene, gene.quantiles)
+
+# View(stats.per.gene)
+
+## Export the full table with statistics per Gene
+write.table(x = stats.per.gene, sep="\t", quote = FALSE, col.names=NA,
+            file = file.path(dir.results, "stats_per_gene.tab"))
+
+
+## Print the 10 first rows of the table in markdown format so that it will be nicely displayed in the HTML report
+knitr::kable(t(stats.per.gene[1:10,]))
 ```
 
 
