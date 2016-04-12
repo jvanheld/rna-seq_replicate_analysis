@@ -145,6 +145,7 @@ sample.description <- data.frame(
   replicate = c(1:48, 1:48)
   )
 
+
 ## Associate one specific color to each genotype
 color.code <- c("WT"="#BBBBDD", "SNF2"="#FFBBBB")
 sample.description$color <- color.code[sample.description$genotype]
@@ -345,10 +346,11 @@ stats.per.sample <- data.frame(
 
 selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99, 1)
 sample.quantiles <-  round(t(apply(counts, 2, quantile, selected.quantiles)), digits=1)
+
 colnames(sample.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
 stats.per.sample <- cbind(stats.per.sample, sample.quantiles)
 
-# View(stats.per.sample)
+ #View(stats.per.sample)
 
 ## Export the full table with statistics per sample
 write.table(x = stats.per.sample, sep="\t", quote = FALSE, col.names=NA,
@@ -452,7 +454,7 @@ for (j in 1:ncol(counts.mednorm)) {
 ## Compute the log2-transformed counts after median-based standardization
 counts.mednorm.log2 <- log2(counts.mednorm)
 
-selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99, 1)
+selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99,1)
 gene.quantiles <-  round(t(apply(counts, 1, quantile, selected.quantiles)), digits=1)
 rownames(gene.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
 stats.per.gene <- cbind(stats.per.gene, gene.quantiles)
