@@ -373,12 +373,19 @@ b. Compare the scaling factors that would be applied with libsum and median-base
 
 ## Compute the median per column
 median.per.column <- apply(counts, 2, median)
-median.count <- median(unlist(counts))
 
-## Compute the median-normalized counts
+## Compute the global median count for all the samples together
+median.count.allsamplestogether <- median(unlist(counts))
+dim(counts)
+
+## Plot a histogram to show the widespread of the median count per sample
+hist(median.per.column, breaks=100, col="cyan")
+abline(v=median.count.allsamplestogether, col="darkgreen", lwd=3)
+
+## Compute the median-normalized counts for each sample, by taking the ratio between sample-wise median count and global median count
 counts.mednorm <- counts.epsilon
 for (j in 1:ncol(counts.mednorm)) {
-  counts.mednorm[,j] <-   counts.epsilon[,j] / median.per.column[j] * median.count
+  counts.mednorm[,j] <-   counts.epsilon[,j] / median.per.column[j] * median.count.allsamplestogether
 }
 
 ## Control: run the commented line before and check that all columns have the same median (they should, since we performed a median-based scaling).
@@ -420,46 +427,36 @@ This distribution does not look like any conventional distribution, but this is 
 
 ### Exercise 4. Statistics per gene (rows of the count table)
 
-Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, min, median, max, IQR, and a few selected quantiles (0, 0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.95, 0.99, 1), ...
+Based on the standardized log2-transformed counts, compute a table with statistics per gene: for each gene, compute the mean, sd, var, min, median, max, IQR, and a few selected quantiles (0, 0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.95,  1), ...
 
 <font color="red">
 **Mustafa: please do the same as what we did above for the samples (columns of the count table), but apply it to genes (rows of the count table).
 </font>
 
 ```{r stats_per_gene}
-
-## Compute
+## Compute gene-wise statistics
 stats.per.gene <- data.frame(
   mean= apply(counts, 1, mean),
-  median= apply(counts, 1, median),
+  sd= apply(counts, 1, sd),
+  var= apply(counts, 1, var),
   min= apply(counts, 1, min),
-  max= apply(counts, 1, max)
+  median= apply(counts, 1, median),
+  max= apply(counts, 1, max),
+  IQR= apply(counts, 1, IQR)
   )
-
-
-median.per.gene<- apply(counts, 1, median)
-median.count <- median(unlist(counts))
-
-## Compute the median-normalized counts
-counts.epsilon [1:5,1:5]
-counts.mednorm <- counts.epsilon
-
-for (j in 1:ncol(counts.mednorm)) {
-  counts.mednorm[,j] <-   counts.epsilon[,j] / median.per.gene[j] * median.count
-}
-
-## Control: run the commented line before and check that all columns have the same median (they should, since we performed a median-based scaling).
-##       print(apply(counts.mednorm, 2, median))
 
 ## Compute the log2-transformed counts after median-based standardization
 counts.mednorm.log2 <- log2(counts.mednorm)
 
 selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99,1)
-gene.quantiles <-  round(t(apply(counts, 1, quantile, selected.quantiles)), digits=1)
-rownames(gene.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
-stats.per.gene <- cbind(stats.per.gene, gene.quantiles)
 
-# View(stats.per.gene)
+gene.quantiles <-  round(t(apply(counts, 1, quantile, selected.quantiles)), digits=1)
+dim(gene.quantiles)
+colnames(gene.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
+colnames(gene.quantiles)
+stats.per.gene <- cbind(stats.per.gene, gene.quantiles)
+colnames(stats.per.gene)
+#  View(stats.per.gene)
 
 ## Export the full table with statistics per Gene
 write.table(x = stats.per.gene, sep="\t", quote = FALSE, col.names=NA,
@@ -508,7 +505,7 @@ abline(v=0, col="black") # Draw a vertical line to mark Y axis
 We can also  draw a plot with the mean of the log2-transformed counts. 
 Note that the arithmetic mean of the logarithms is equivalent to the logarithm of the geometric mean. 
 
-$$\frac{1}{n}\sum_{j=1}^{n}{log_2(x_{i,j})} = log_2(\sqrt[n]]{\prod_{j=1}^{n}{x_{i,j}}})$$
+$$\frac{1}{n}\sum_{j=1}^{n}{log_2(x_{i,j})} = log_2(\sqrt[n]{\prod_{j=1}^{n}{x_{i,j}}})$$
 
 ```{r fig.width=7, fig.height=7, fig.cap="Comparison of mean read log2(counts) per gene between the two genotypes. Note that this drawing is very preliminary, since we did not yet normalize the libraries. It is just to get a rough idea. "}
 
