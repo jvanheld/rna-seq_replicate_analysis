@@ -65,20 +65,11 @@ The goal of this tutorial is to get familiar with RNA-seq data:
 
 ### Data source
 
-[@Gierlinski:2015jt]
-
-1. Gierliński,M., Cole,C., Schofield,P., Schurch,N.J., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G., Owen-Hughes,T., et al. (2015) Statistical models for RNA-seq data derived from a two-condition 48-replicate experiment. Bioinformatics, 10.1093/bioinformatics/btv425.
-
-
-[@Schurch:2015vk]
-
-2. Schurch,N.J., Schofield,P., Gierliński,M., Cole,C., Sherstnev,A., Singh,V., Wrobel,N., Gharbi,K., Simpson,G.G., Owen-Hughes,T., et al. (2015) Evaluation of tools for differential gene expression analysis by RNA-seq on a 48 biological replicate experiment. arXiv.
-
+The 48-replicate yeast study was obtained from Goeff Barton's group publications [@Gierlinski:2015jt, @Schurch:2015vk].
 
 ### Methods
 
-
-Fang and coworkers [-@Fang:2012fg] compares different statistical models and tests (Poisson, Fisher, negative binomial, ...) for the detection of differentially expressed genes. 
+Fang and coworkers [-@Fang:2012fg] compared different statistical models and tests (Poisson, Fisher, negative binomial, ...) for the detection of differentially expressed genes. 
 
 #### Full original datasets (beware, there are 672 fastq files !)
 
@@ -538,13 +529,28 @@ grid(col="blue")
 Regularly we discuss about the results and interpret. 
 
 ```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
-dim(counts)
-cds<-DGEList(counts)
+
+dim(counts) ## Check the dimensions of the count table. 
+## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
+
+
+cds <- DGEList(counts) ## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
+
 names(cds)
-head(cds$counts)
-cds$samples 
+attributes(cds)
+cds$samples ## Basic 
+
+## Check that the cds$counts contains the same info as in your original count table
+counts[1:10, 1:5]
+(cds$counts[1:10, 1:5])
+dim(counts)
+dim(cds$counts)
+dim(cds) ## For convenience, the DGEList object has a method "dim" that returns the dimension of the count field > gives the same result as cds$count)
+
+
+## I think you
 sum(cds$all.zeros)
-dim(cds)
+
 
 cds <- cds[rowSums(1e+06 * cds$counts/expandAsMatrix(cds$samples$lib.size, dim(cds)) > 1) >= 3, ]
 dim(cds)
