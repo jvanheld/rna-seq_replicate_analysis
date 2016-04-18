@@ -136,7 +136,6 @@ sample.description <- data.frame(
   replicate = c(1:48, 1:48)
   )
 
-
 ## Associate one specific color to each genotype
 color.code <- c("WT"="#BBBBDD", "SNF2"="#FFBBBB")
 sample.description$color <- color.code[sample.description$genotype]
@@ -528,28 +527,49 @@ grid(col="blue")
 
 Regularly we discuss about the results and interpret. 
 
+
 ```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
 
 dim(counts) ## Check the dimensions of the count table. 
 ## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
 
+## we will now create a DGEList object to hold our read counts.
+## DGEList is an example of the custom task-specific sructure that are frequently used in Bioconductor to make analyses easier 
+dgList <- DGEList(counts=counts , genes = rownames(counts)) ## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
+dgList
+dgList$samples
+head(dgList$counts)
+head(dgList$genes)
 
-cds <- DGEList(counts) ## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
-
-names(cds)
-attributes(cds)
-cds$samples ## Basic 
+#names(cds)
+attributes(dgList)
+#cds$samples ## Basic 
 
 ## Check that the cds$counts contains the same info as in your original count table
-counts[1:10, 1:5]
-(cds$counts[1:10, 1:5])
+dgList$counts[1:10, 1:5]
+(dgList$counts[1:10, 1:5])
 dim(counts)
-dim(cds$counts)
-dim(cds) ## For convenience, the DGEList object has a method "dim" that returns the dimension of the count field > gives the same result as cds$count)
+dim(dgList$counts)
+dim(dgList) ## For convenience, the DGEList object has a method "dim" that returns the dimension of the count field > gives the same result as cds$count)
 
 
 ## I think you
-sum(cds$all.zeros)
+##sum(cds$all.zeros)
+
+# Now we will create variaty in filtring process.
+##In our dataset we have approximatly 7125 Genes. However, many of them will not be expressed, or will not be repersented by enough reads to contribute to the analysis. Removing these genes means that we ulimately have fewer tests to perform, thereby we will reducing the problems associated with multiple testing by using cpm= Counts per million, whereas we will retain only those genes that are repersented at least 1 cpm reads in our two groups for gene ""WT and "SNF2".
+countsPerMillion <- cpm(dgList)
+summary(countsPerMillion)
+countcheck<- countsPerMillion > 1
+countcheck.sum<- sum (countsPerMillion > 1)
+countcheck.sum
+head(countcheck)
+keep <- which(rowSums(countcheck)>= 2)
+sum(keep)
+dgList<-dgList[keep,]
+dgList
+summary(cpm(dgList))
+
 
 
 cds <- cds[rowSums(1e+06 * cds$counts/expandAsMatrix(cds$samples$lib.size, dim(cds)) > 1) >= 3, ]
@@ -560,9 +580,74 @@ cds$counts
 cds$samples$lib.size * cds$samples$norm.factors
 ```    
 
-```{r we need to plot measures the similarity of the samples by using Multi-Dimensional Scalling Plot}
-plotMDS( cds , main = "MDS Plot for Count Data", labels = colnames( cds$counts ) )
+## NORMALISATION by unsing edgR packege..
+
+It is important to Normalise RNA-Seq both within and between samples, edgeR implements the trimmed mean of M-Values (TMM) method.
+
+```{r NORMALISATION by unsing edgR packege}
+?calcNormFactors
+dgList<- calcNormFactors(dgList, method = "TMM")
+
 ```
+
+# Data Exploration 
+```{r}
+plotMDS(dgList,
+        main= "Exmining inter samlple relationship",
+        xlab = "Number of sample  within genes",
+        ylab = "Number of genes through Samples"
+        )
+```
+# Setting up the Model 
+we will specify the design of our Matrix, which describes the setup of our experiment.
+```{r setting up the Model}
+attributes(counts)
+counts$row.names
+counts$names
+designMat <- model.matrix(~sample.description$replicate + sample.description$genotype) ### this need to Check with prof. Jacques.
+designMat
+```
+
+# Estimating Dispersions 
+Now, we will estimate the dispersion parameter for our negativee Bionomial Model.
+In edgeR, We use an empirical Bayes method to "Shrink" the genewise dispersion estimates towards the common dispersion (tagwise dispersion).
+we must to estimate common or trended dispersion before we can estimate the tagwise dispersion.
+```{r}
+dgList <- estimateGLMCommonDisp(dgList, design = designMat)
+dgList <- estimateGLMTrendedDisp(dgList, design = designMat)
+dgList<- estimateGLMTagwiseDisp(dgList, design = designMat)
+
+## Now, we can plot the estimates and see how they differ. the Biological coefficient of Variation (BCV) is the square root of the dispersion parameter in the negative binomial Model.
+plotBCV(dgList,
+        main = "",
+        xlab = "",
+        ylab = ""
+          
+          )
+```
+
+# Differential Expression 
+Now, we can find our differentially expressed genes. After fitting the Model, we can use topTags() function to explore the results, and set thresholds to identify subset of differentially expressed genes.
+```{r}
+fit <- glmFit(dgList, designMat)
+lrt <- glmLRT(fit)
+?topTags
+edgeR_result <- topTags(lrt)
+
+attributes(topTags(lrt))
+ topTags(lrt)$table        
+write.table(topTags(lrt)$table, file ='edgeR/edgeR_Result.RData',
+      sep ="\t" , quote= FALSE  )
+## Finally, we can Plot the Log-fold changes of all the genes, and the highlight those that are differentially expressed
+?decideTests
+
+deGenes <- decideTestsDGE(lrt,p=0.001)
+deGenes <-  rownames(lrt)[as.logical(deGenes)]
+plotSmear(lrt, d.tags=deGenes)
+abline(h=c(-1,1),col=2)
+```
+
+
 
 ```{r now we Estimating Dispersions }
 ## to calculate a commen dispersion, each gene gets assigned the same dispersion estimate 
