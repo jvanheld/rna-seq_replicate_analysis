@@ -540,7 +540,7 @@ dgList
 dgList$samples
 head(dgList$counts)
 head(dgList$genes)
-
+dgList$genes
 #names(cds)
 attributes(dgList)
 #cds$samples ## Basic 
@@ -572,12 +572,12 @@ summary(cpm(dgList))
 
 
 
-cds <- cds[rowSums(1e+06 * cds$counts/expandAsMatrix(cds$samples$lib.size, dim(cds)) > 1) >= 3, ]
-dim(cds)
-cds <- calcNormFactors(cds)
-cds$samples
-cds$counts
-cds$samples$lib.size * cds$samples$norm.factors
+#cds <- cds[rowSums(1e+06 * cds$counts/expandAsMatrix(cds$samples$lib.size, dim(cds)) > 1) >= 3, ]
+#dim(cds)
+#cds <- calcNormFactors(cds)
+#cds$samples
+#cds$counts
+#cds$samples$lib.size * cds$samples$norm.factors
 ```    
 
 ## NORMALISATION by unsing edgR packege..
@@ -591,7 +591,7 @@ dgList<- calcNormFactors(dgList, method = "TMM")
 ```
 
 # Data Exploration 
-```{r}
+```{r exploring Data}
 plotMDS(dgList,
         main= "Exmining inter samlple relationship",
         xlab = "Number of sample  within genes",
@@ -602,17 +602,33 @@ plotMDS(dgList,
 we will specify the design of our Matrix, which describes the setup of our experiment.
 ```{r setting up the Model}
 attributes(counts)
-counts$row.names
-counts$names
-designMat <- model.matrix(~sample.description$replicate + sample.description$genotype) ### this need to Check with prof. Jacques.
+
+sample.type <- rep("WT", ncol(dgList))
+sample.type 
+colnames(dgList)
+
+sample.type[grep("SNF2",colnames(dgList))]<- "SNF2"
+
+sample.type
+sample.replicates <- c(1:48, 1:48)
+sample.replicates
+
+designMat <- model.matrix(~sample.replicates + sample.type) ### this need to Check with prof. Jacques.
 designMat
 ```
 
 # Estimating Dispersions 
-Now, we will estimate the dispersion parameter for our negativee Bionomial Model.
+Now, we will estimate the dispersion parameter for our negative Bionomial Model.
+owing to it is difficult to estimate the dispersion accurately for each Gene. therefore we will take a way of sharing information between genes BY 
+* using a common estimate across all genes.
+* Fitting an estimate based on the Mean-Variance trend  across the dataset, such that genes similar abundances have similar 
+  variance estimates (Trended dispersion)
+* Computing a genewise dispersion (tagwise dispersion).
 In edgeR, We use an empirical Bayes method to "Shrink" the genewise dispersion estimates towards the common dispersion (tagwise dispersion).
 we must to estimate common or trended dispersion before we can estimate the tagwise dispersion.
-```{r}
+
+```{r Estimating Dispersions}
+
 dgList <- estimateGLMCommonDisp(dgList, design = designMat)
 dgList <- estimateGLMTrendedDisp(dgList, design = designMat)
 dgList<- estimateGLMTagwiseDisp(dgList, design = designMat)
@@ -627,8 +643,9 @@ plotBCV(dgList,
 ```
 
 # Differential Expression 
-Now, we can find our differentially expressed genes. After fitting the Model, we can use topTags() function to explore the results, and set thresholds to identify subset of differentially expressed genes.
-```{r}
+Now, we can find our differentially expressed genes. After fitting the Model, we can use **topTags()** function to explore the results, and set thresholds to identify subset of differentially expressed genes.
+
+```{r Differential Expression}
 fit <- glmFit(dgList, designMat)
 lrt <- glmLRT(fit)
 ?topTags
@@ -642,9 +659,11 @@ write.table(topTags(lrt)$table, file ='edgeR/edgeR_Result.RData',
 ?decideTests
 
 deGenes <- decideTestsDGE(lrt,p=0.001)
+deGenes
 deGenes <-  rownames(lrt)[as.logical(deGenes)]
 plotSmear(lrt, d.tags=deGenes)
 abline(h=c(-1,1),col=2)
+
 ```
 
 
