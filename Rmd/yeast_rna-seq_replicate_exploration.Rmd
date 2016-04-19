@@ -529,7 +529,7 @@ Regularly we discuss about the results and interpret.
 
 
 ```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
-
+counts
 dim(counts) ## Check the dimensions of the count table. 
 ## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
 
@@ -646,6 +646,7 @@ plotBCV(dgList,
 Now, we can find our differentially expressed genes. After fitting the Model, we can use **topTags()** function to explore the results, and set thresholds to identify subset of differentially expressed genes.
 
 ```{r Differential Expression}
+
 fit <- glmFit(dgList, designMat)
 lrt <- glmLRT(fit)
 ?topTags
@@ -704,6 +705,20 @@ par(mfrow=c(3 ,1))
 #hist()
 ```
 
+```{r Differential Expression of RNA-Seq data at the Gene level by using DESeq package}
+## Now, we will creat the central data structure namely CountDataSet by DESeq Package
+cds = newCountDataSet(counts,sample.description$replicate)
+cds
+
+## Normalisation, we will estimate the effective library size which sometimes also called (Normalisation), the effective library size information calling the Size factors Vector.
+cds = estimateSizeFactors(cds)
+sizeFactors(cds)
+
+## this method is usefull for visualization our count values which are brought the common scale by dividing each column of the count table by the size factor for this column.
+head (counts(cds , normalized=TRUE))
+
+
+```
 
 
 ## References

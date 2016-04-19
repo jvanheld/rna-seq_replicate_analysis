@@ -13,5 +13,10 @@ if (!require(DESeq2)) {
   library(DESeq2)
 }
 
+if (!require(DESeq)){
+  biocLite("DESeq") ## install packege only if it cannot be loaded (Because not installed yet)
+  library(DESeq)
+  
+}
 
 
