@@ -647,15 +647,15 @@ Now, we can find our differentially expressed genes. After fitting the Model, we
 
 ```{r Differential Expression}
 
-fit <- glmFit(dgList, designMat)
+fit <- glmFit(dgList,designMat)
 lrt <- glmLRT(fit)
 ?topTags
 edgeR_result <- topTags(lrt)
 
 attributes(topTags(lrt))
  topTags(lrt)$table        
-write.table(topTags(lrt)$table, file ='edgeR/edgeR_Result.RData',
-      sep ="\t" , quote= FALSE  )
+#write.table(topTags(lrt)$table, file ='edgeR/edgeR_Result.RData',
+#      sep ="\t" , quote= FALSE  )
 ## Finally, we can Plot the Log-fold changes of all the genes, and the highlight those that are differentially expressed
 ?decideTests
 
@@ -671,7 +671,8 @@ abline(h=c(-1,1),col=2)
 
 ```{r now we Estimating Dispersions }
 ## to calculate a commen dispersion, each gene gets assigned the same dispersion estimate 
-cds <- estimateCommonDisp( cds )
+cds <-DGEList(counts)
+cds <- estimateCommonDisp( cds)
 names(cds)
 cds$common.dispersion 
 
@@ -711,14 +712,40 @@ cds = newCountDataSet(counts,sample.description$replicate)
 cds
 
 ## Normalisation, we will estimate the effective library size which sometimes also called (Normalisation), the effective library size information calling the Size factors Vector.
+
+# In other words, Now we estimate the **EFFECTIVE LIBRARY SIZE**, Even though there is no relation to normality or a normal distribution, where we can take effective library size information from size factors vector  
 cds = estimateSizeFactors(cds)
 sizeFactors(cds)
 
 ## this method is usefull for visualization our count values which are brought the common scale by dividing each column of the count table by the size factor for this column.
 head (counts(cds , normalized=TRUE))
 
-
 ```
 
+## Estimation of variance:-
+in DESeq, the inference relies on the estimation of the typical relationship between the data's viaraince (the data dispersion) and their mean. where is ** the dispersion** can understood as the square of the coefficient of Biological variation, so, if a gene's expression typically differs from replicate to replicate sample by 20%thence gene's dispersion is 0.2 power 2 = 0.04.
+we can Note the Variance between counts is the sum of two components: the sample-to-sample variation and uncertinity in measuring a concentration by counting reads.
+this emply us to know shot nois or poisson noise, which is the dominating noise source for lowly expressed genes.
+The former dominates for highly expressed genes is the sum of both, shot noise and dispersion, is considered in the differential expression inference.$$v of count vaue is modelled as
+
+***** the variance 
+$$v = \sm \sum $ m$$($j^{th}$ column),
+* where M is expected normalized count value (estimated by the average normalised count value).
+* s is the sive factor for the sample under considaration.
+* is the dispertion value for the gene under consideration.
+
+
+```{r}
+ cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
+## this function will performs three steps. 
+# * it estimate a dispersion value for each gene.
+# * it fits a curve through the estimates.
+# * it assignes to each gene a dispersion value. using a choice between the per-gene estimate and the fitted value.
+
+str(fitInfo(cds))
+plotDispEsts(cds)
+fData(cds)[c(1,3,4,5,6,7,8,9,10),]
+fData(cds)$disp_pooled
+```
 
 ## References
