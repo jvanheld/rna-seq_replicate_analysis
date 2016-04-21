@@ -9,6 +9,7 @@ output:
     theme: cerulean
     toc: yes
     toc_depth: 3
+    toc_float: true
   pdf_document:
     fig_caption: yes
     highlight: zenburn
@@ -529,12 +530,17 @@ Regularly we discuss about the results and interpret.
 
 
 ```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
-counts
+## counts
+hist(apply(counts, 2, sum))
+print(counts[1000:1010,])
 dim(counts) ## Check the dimensions of the count table. 
 ## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
 
-## we will now create a DGEList object to hold our read counts.
-## DGEList is an example of the custom task-specific sructure that are frequently used in Bioconductor to make analyses easier 
+```
+
+We will now create a DGEList object to hold our read counts. DGEList is an example of the custom task-specific structure that are frequently used in Bioconductor to make analyses easier 
+
+```{r dglist_example}
 dgList <- DGEList(counts=counts , genes = rownames(counts)) ## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
 dgList
 dgList$samples
@@ -546,8 +552,8 @@ attributes(dgList)
 #cds$samples ## Basic 
 
 ## Check that the cds$counts contains the same info as in your original count table
-dgList$counts[1:10, 1:5]
-(dgList$counts[1:10, 1:5])
+dgList$counts[1000:1010, 1:5]
+print(dgList$counts[1:10, 1:5])
 dim(counts)
 dim(dgList$counts)
 dim(dgList) ## For convenience, the DGEList object has a method "dim" that returns the dimension of the count field > gives the same result as cds$count)
@@ -556,19 +562,63 @@ dim(dgList) ## For convenience, the DGEList object has a method "dim" that retur
 ## I think you
 ##sum(cds$all.zeros)
 
-# Now we will create variaty in filtring process.
-##In our dataset we have approximatly 7125 Genes. However, many of them will not be expressed, or will not be repersented by enough reads to contribute to the analysis. Removing these genes means that we ulimately have fewer tests to perform, thereby we will reducing the problems associated with multiple testing by using cpm= Counts per million, whereas we will retain only those genes that are repersented at least 1 cpm reads in our two groups for gene ""WT and "SNF2".
+```
+
+
+Now we will create variety in filtring process. In our dataset we have approximatly 7125 Genes. However, many of them will not be expressed, or will not be represented by enough reads to contribute to the analysis. Removing these genes means that we ulimately have fewer tests to perform, thereby we will reduce the problems associated with multiple testing by using **cpm** (= **Counts per million**), whereas we will retain only those genes that are repersented at least 1 cpm reads in our two groups for gene ""WT and "SNF2".
+
+```{r}
+## Compute counts per million reads
 countsPerMillion <- cpm(dgList)
 summary(countsPerMillion)
-countcheck<- countsPerMillion > 1
-countcheck.sum<- sum (countsPerMillion > 1)
-countcheck.sum
-head(countcheck)
-keep <- which(rowSums(countcheck)>= 2)
-sum(keep)
-dgList<-dgList[keep,]
+
+## By definition, th counts per million should bring the sum of counts to precisely 1 million, for each sample. We can cehck this by running apply(sum) on the CPM table.
+apply(countsPerMillion, 2, sum)
+
+# The total number of values in the count table
+nb.values <- nrow(countsPerMillion) * ncol(countsPerMillion)
+print(paste("Total number of values = ", nb.values))
+
+## Count how many measurements axceed 1 count per million (we willl filter our the measurements having less than 1 cpm, because these genes are barely detectable or absent)
+countcheck <- countsPerMillion > 1 # Build a data frame indicating, for each measurement in the count table, whether it is above 1 CPM
+# View(countcheck)
+countcheck.sum <- sum (countsPerMillion > 1)
+print(paste("Number of values > 1CPM: ", countcheck.sum)) # the total number of values > 1 CPM
+
+
+print(paste(sep="", "Percent of values > 1CPM: ", round(digits=1, 100*countcheck.sum/nb.values), "%")) # the total number of values > 1 CPM
+
+
+## show the process from counts to filtered genes
+kable(counts[1:10, ], caption = "Raw counts per gene in each sample.")
+kable(countsPerMillion[1:10, ], caption = "Counts per million reads (normalized counts).")
+kable(countcheck[1:10, ], caption = "Counts per million reads (normalized counts).")
+  
+## For each gene (row), count the sum of rows of the countcheck, which indicate the number of samples in which this gene was detected above 1 CPM. 
+detected.samples.per.gene <- rowSums(countcheck)
+hist(detected.samples.per.gene, breaks=0:ncol(countcheck))
+
+## We will now suppress all the genes that were detected in less than 2 samples.
+
+## Define a Boolean vector indicating, for each gene, whether we want to keep it or not
+keep.Boolean <- detected.samples.per.gene >= 2
+print(keep.Boolean[1:10])
+
+## Define a vector with the indices of the genes to keep
+keep <- which(rowSums(countcheck) >= 2)
+print(keep[1:10])
+
+print(paste("Initial number of genes: ", nrow(countcheck)))
+print(paste("Number of kept genes: ", sum(keep.Boolean))) ## Count the number of genes that will be kept
+print(paste("Number of kept genes: ", length(keep))) ## Count the number of genes that will be kept
+print(paste("Percent of kept genes: ", round(digits=1, 100*length(keep)/nrow(countcheck)))) ## Count the number of genes that will be kept
+
+
+## Apply the filter to the dgList: select the genes that were TRUE in the "kept" vector.
+dgList<-dgList[names(keep),]
 dgList
 summary(cpm(dgList))
+apply(cpm(dgList), 2, sum)
 
 
 
@@ -588,18 +638,35 @@ It is important to Normalise RNA-Seq both within and between samples, edgeR impl
 ?calcNormFactors
 dgList<- calcNormFactors(dgList, method = "TMM")
 
+attributes(dgList)
+kable(dgList[1:10, ])
+
+
 ```
 
 # Data Exploration 
+
+<font color="red">Mustafa, document yourself about multidimensional scaling. There are different methods for MDS. I think that in this case they simply use principal component analysis. Also read about Principal Component Analysis (PCA).</font>
+
+
+Each sample can be viewed as a vector of `r nrow(dgList)` values (one value per gene). We can thus imagine a "sample  space" made of `r nrow(dgList)` dimensions (one dimension per gene) , where the position of each sample is defined by the normalized counts (CPM) of each gene. 
+
+
 ```{r exploring Data}
 plotMDS(dgList,
-        main= "Exmining inter samlple relationship",
-        xlab = "Number of sample  within genes",
-        ylab = "Number of genes through Samples"
+        main= "Examining inter-sample distance.",
+        xlab = "First component",
+        ylab = "Second component"
         )
 ```
+
+Interpretation of the result: in the two first components, the distance between samples is an approximation of the similarity betwen the count profiles. Interestingly, the first component perfectly separates the WT from the Snf2 samples (the two genotypes). We also notice the presence of some "outliers", i.e. WT samples projecting outside of the WT cluster, and Snf2 samples projected outside of the Snf2 cluster. 
+
+Mustafa: please check if these samples correspond to those that were discarded by Schunk et al (see today's seminar by Denis).
+
 # Setting up the Model 
-we will specify the design of our Matrix, which describes the setup of our experiment.
+
+We will specify the design of our Matrix, which describes the setup of our experiment.
 ```{r setting up the Model}
 attributes(counts)
 
@@ -722,7 +789,7 @@ head (counts(cds , normalized=TRUE))
 
 ```
 
-## Estimation of variance:-
+## Estimation of variance:
 in DESeq, the inference relies on the estimation of the typical relationship between the data's viaraince (the data dispersion) and their mean. where is ** the dispersion** can understood as the square of the coefficient of Biological variation, so, if a gene's expression typically differs from replicate to replicate sample by 20%thence gene's dispersion is 0.2 power 2 = 0.04.
 we can Note the Variance between counts is the sum of two components: the sample-to-sample variation and uncertinity in measuring a concentration by counting reads.
 this emply us to know shot nois or poisson noise, which is the dominating noise source for lowly expressed genes.
@@ -756,5 +823,31 @@ fData(cds)$disp_pooled
 res = nbinomTest(cds, "A","B")
 ```
 
+## Estimation of variance:-
+
+In DESeq, the inference relies on the estimation of the typical relationship between the data's viaraince (the data dispersion) and their mean. where is ** the dispersion** can understood as the square of the coefficient of Biological variation, so, if a gene's expression typically differs from replicate to replicate sample by 20%thence gene's dispersion is 0.2 power 2 = 0.04.
+we can Note the Variance between counts is the sum of two components: the sample-to-sample variation and uncertinity in measuring a concentration by counting reads.
+this emply us to know shot nois or poisson noise, which is the dominating noise source for lowly expressed genes.
+The former dominates for highly expressed genes is the sum of both, shot noise and dispersion, is considered in the differential expression inference.$$v of count vaue is modelled as
+
+***** the variance 
+$$v = \sm \sum $ m$$($j^{th}$ column),
+* where M is expected normalized count value (estimated by the average normalised count value).
+* s is the sive factor for the sample under considaration.
+* is the dispertion value for the gene under consideration.
+
+
+```{r}
+cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
+## this function will performs three steps. 
+# * it estimate a dispersion value for each gene.
+# * it fits a curve through the estimates.
+# * it assignes to each gene a dispersion value. using a choice between the per-gene estimate and the fitted value.
+
+str(fitInfo(cds))
+plotDispEsts(cds)
+fData(cds)[c(1,3,4,5,6,7,8,9,10),]
+fData(cds)$disp_pooled
+```
 
 ## References
