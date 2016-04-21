@@ -819,8 +819,8 @@ fData(cds)$disp_pooled
 
 # inference: by calling Differential expression
 ```{r}
-?nbinomTest
-res = nbinomTest(cds, "A","B")
+#?nbinomTest
+#res = nbinomTest(cds, "A","B")
 ```
 
 ## Estimation of variance:-
