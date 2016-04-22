@@ -654,43 +654,50 @@ Each sample can be viewed as a vector of `r nrow(dgList)` values (one value per 
 
 ```{r exploring Data}
 plotMDS(dgList,
-        main= "Examining inter-sample distance.",
+        main= "Multidimensional scaling of the samples",
         xlab = "First component",
         ylab = "Second component"
         )
 ```
 
-Interpretation of the result: in the two first components, the distance between samples is an approximation of the similarity betwen the count profiles. Interestingly, the first component perfectly separates the WT from the Snf2 samples (the two genotypes). We also notice the presence of some "outliers", i.e. WT samples projecting outside of the WT cluster, and Snf2 samples projected outside of the Snf2 cluster. 
+Interpretation of the result: in the two first components, the distance between samples is an approximation of the similarity betwen their count profiles per gene. 
+
+Interestingly, the first component perfectly separates the WT from the Snf2 samples (the two genotypes). We also notice the presence of some "outliers", i.e. WT samples projecting outside of the WT cluster, and Snf2 samples projected outside of the Snf2 cluster. 
 
 Mustafa: please check if these samples correspond to those that were discarded by Schunk et al (see today's seminar by Denis).
 
 # Setting up the Model 
 
 We will specify the design of our Matrix, which describes the setup of our experiment.
-```{r setting up the Model}
-attributes(counts)
 
-sample.type <- rep("WT", ncol(dgList))
+```{r setting up the Model}
+
+## Define a vector of the same length as the number of samples, indicating the group of each sample (2 groups: WT and SNF2)
+attributes(counts)
+sample.type <- rep("WT", ncol(dgList)) ## Initialize the vector with the same value (WT) for all the entries (this is temporary)
 sample.type 
 colnames(dgList)
-
 sample.type[grep("SNF2",colnames(dgList))]<- "SNF2"
-
-sample.type
+sample.type ## Check that the 48 first samples are WT, and then 48 of them are  SNF2
+table(sample.type)
 sample.replicates <- c(1:48, 1:48)
 sample.replicates
 
 designMat <- model.matrix(~sample.replicates + sample.type) ### this need to Check with prof. Jacques.
 designMat
+
 ```
 
 # Estimating Dispersions 
+
 Now, we will estimate the dispersion parameter for our negative Bionomial Model.
 owing to it is difficult to estimate the dispersion accurately for each Gene. therefore we will take a way of sharing information between genes BY 
+
 * using a common estimate across all genes.
 * Fitting an estimate based on the Mean-Variance trend  across the dataset, such that genes similar abundances have similar 
   variance estimates (Trended dispersion)
 * Computing a genewise dispersion (tagwise dispersion).
+
 In edgeR, We use an empirical Bayes method to "Shrink" the genewise dispersion estimates towards the common dispersion (tagwise dispersion).
 we must to estimate common or trended dispersion before we can estimate the tagwise dispersion.
 
@@ -698,16 +705,17 @@ we must to estimate common or trended dispersion before we can estimate the tagw
 
 dgList <- estimateGLMCommonDisp(dgList, design = designMat)
 dgList <- estimateGLMTrendedDisp(dgList, design = designMat)
-dgList<- estimateGLMTagwiseDisp(dgList, design = designMat)
+dgList <- estimateGLMTagwiseDisp(dgList, design = designMat)
 
 ## Now, we can plot the estimates and see how they differ. the Biological coefficient of Variation (BCV) is the square root of the dispersion parameter in the negative binomial Model.
 plotBCV(dgList,
-        main = "",
-        xlab = "",
-        ylab = ""
-          
-          )
+        main = "Gene-wise Biological Coefficient of Variation",
+        xlab = "Mean per gene",
+        ylab = "")
+
 ```
+
+Mustafa: please find the original paper from edgeR, where they describe all these statistics (e.g. the biological coefficient of variation), and try to understand what it represents; Then we discuss next week. 
 
 # Differential Expression 
 Now, we can find our differentially expressed genes. After fitting the Model, we can use **topTags()** function to explore the results, and set thresholds to identify subset of differentially expressed genes.
