@@ -691,7 +691,7 @@ designMat
 # Estimating Dispersions 
 
 Now, we will estimate the dispersion parameter for our negative Bionomial Model.
-owing to it is difficult to estimate the dispersion accurately for each Gene. therefore we will take a way of sharing information between genes BY 
+owing to it is difficult to estimate the dispersion accurately for each Gene. therefore we will take a way of **sharing information between genes** BY 
 
 * using a common estimate across all genes.
 * Fitting an estimate based on the Mean-Variance trend  across the dataset, such that genes similar abundances have similar 
@@ -703,8 +703,8 @@ we must to estimate common or trended dispersion before we can estimate the tagw
 
 ```{r Estimating Dispersions}
 
-dgList <- estimateGLMCommonDisp(dgList, design = designMat)
-dgList <- estimateGLMTrendedDisp(dgList, design = designMat)
+dgList <- estimateGLMCommonDisp(dgList, design = designMat,   verbose=TRUE)
+dgList <- estimateGLMTrendedDisp(dgList, design = designMat,   verbose=TRUE )
 dgList <- estimateGLMTagwiseDisp(dgList, design = designMat)
 
 ## Now, we can plot the estimates and see how they differ. the Biological coefficient of Variation (BCV) is the square root of the dispersion parameter in the negative binomial Model.
