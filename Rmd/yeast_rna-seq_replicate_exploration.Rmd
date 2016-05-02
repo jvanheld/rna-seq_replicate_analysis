@@ -530,20 +530,25 @@ Regularly we discuss about the results and interpret.
 
 
 ```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
+
 ## counts
-hist(apply(counts, 2, sum))
-print(counts[1000:1010,])
-dim(counts) ## Check the dimensions of the count table. 
+hist(log10(apply(counts, 2, sum)), breaks=50,
+     main="Sum of counts per sample", col="#DDEEFF",
+     xlab="Log10(sum of counts)", ylab="Number of samples", xlim=c(6.7,7.2))
+# print(counts[1000:1010,])
+# dim(counts) ## Check the dimensions of the count table. 
 ## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
 
 ```
 
-We will now create a DGEList object to hold our read counts. DGEList is an example of the custom task-specific structure that are frequently used in Bioconductor to make analyses easier 
+We will now create a DGEList object to hold our read counts. DGEList is an example of the custom task-specific structure that are frequently used in Bioconductor to make analyses easier.
 
 ```{r dglist_example}
-dgList <- DGEList(counts=counts , genes = rownames(counts)) ## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
-dgList
-dgList$samples
+## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
+dgList <- DGEList(counts=counts , genes = rownames(counts)) 
+
+# print(dgList) ## Just for debugging, not to print in the output
+# dgList$samples
 head(dgList$counts)
 head(dgList$genes)
 dgList$genes
@@ -565,14 +570,33 @@ dim(dgList) ## For convenience, the DGEList object has a method "dim" that retur
 ```
 
 
-Now we will create variety in filtring process. In our dataset we have approximatly 7125 Genes. However, many of them will not be expressed, or will not be represented by enough reads to contribute to the analysis. Removing these genes means that we ulimately have fewer tests to perform, thereby we will reduce the problems associated with multiple testing by using **cpm** (= **Counts per million**), whereas we will retain only those genes that are repersented at least 1 cpm reads in our two groups for gene ""WT and "SNF2".
+###  Filtering out undetected genes
+
+
+#### Why ?
+
+**Motivation: ** now we will apply a filter to discard genes that remain undetectedin almost all the samples.
+
+**Explanation: ** In our dataset we have approximatly 7125 Genes. However, many of them will not be expressed, or will not be represented by enough reads to contribute to the analysis. Removing these genes means that we ultimately have fewer tests to perform, thereby we will reduce the problems associated with multiple testing by using **cpm** (= **Counts per million**), whereas we will retain only those genes that are repersented at least 1 cpm reads in our two groups for gene "WT" and "SNF2" (MAEQ, Summarized from ^[@Rueda:2015ut]).
+
+#### How ?
+
+**Procedure: ** starting from the raw count table, 
+
+1. We compute a Boolean table named `countcheck`, which indicates whether each gene (rows) is or not detected in each sample (column). Our criterion for considering a gene as detected or not is to have at least one count for this gene in this sample. 
+
+2. Compute the marginal sums on each row of the Boolean `countcheck` table, and store it in a Boolean vector named `countcheck.sum`, which indicates, for each gene, the number of samples in which it has been detected. 
+
+3. We plot an histogram showing the distribution of the number of samples where each gene is detected.
+
+4. We compte a Boolean vector indicating whether each gene has been detected in at least 2 samples. We discard all the genes that fail to pass this criterion. 
 
 ```{r}
 ## Compute counts per million reads
 countsPerMillion <- cpm(dgList)
 summary(countsPerMillion)
 
-## By definition, th counts per million should bring the sum of counts to precisely 1 million, for each sample. We can cehck this by running apply(sum) on the CPM table.
+## By definition, th counts per million should bring the sum of counts to precisely 1 million, for each sample. We can check this by running apply(sum) on the CPM table.
 apply(countsPerMillion, 2, sum)
 
 # The total number of values in the count table
@@ -596,13 +620,16 @@ kable(countcheck[1:10, ], caption = "Counts per million reads (normalized counts
   
 ## For each gene (row), count the sum of rows of the countcheck, which indicate the number of samples in which this gene was detected above 1 CPM. 
 detected.samples.per.gene <- rowSums(countcheck)
-hist(detected.samples.per.gene, breaks=0:ncol(countcheck))
+hist(detected.samples.per.gene, breaks=0:ncol(countcheck),
+     main="Gene detection in samples", col="#FFBBDD",
+     xlab="Number of samples where a gene is detected (counts >= 0)",
+     ylab="Number of genes")
 
 ## We will now suppress all the genes that were detected in less than 2 samples.
 
 ## Define a Boolean vector indicating, for each gene, whether we want to keep it or not
 keep.Boolean <- detected.samples.per.gene >= 2
-print(keep.Boolean[1:10])
+table(keep.Boolean)
 
 ## Define a vector with the indices of the genes to keep
 keep <- which(rowSums(countcheck) >= 2)
@@ -629,6 +656,12 @@ apply(cpm(dgList), 2, sum)
 #cds$counts
 #cds$samples$lib.size * cds$samples$norm.factors
 ```    
+
+#### What ?
+
+What do we observe ? What do we conclude (answer the original question of the motivation) ?
+
+*Interpretation of the result: ** Among the XXX genes in our orginal count table, XXX (YYY%) were filtered out because they wer detected in less than 2 samples. 
 
 ## NORMALISATION by unsing edgR packege..
 
