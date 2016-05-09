@@ -1,0 +1,47 @@
+---
+title: "information_about_RNA-seq_DEG.Rmd"
+author: "Jacques van Helden"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    fig_caption: yes
+    highlight: zenburn
+    theme: cerulean
+    toc: yes
+    toc_depth: 3
+    toc_float: true
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: 3
+  word_document: default
+bibliography: bibliography_rna-seq.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Fast reasoning
+
+RNA-seq is based on the collection of RNA molecules from a biological sample.
+
+
+We can consider the full set of RNA molecules found in the biological sample as the population (in the statistical sense) of all the transcripts produced by this sample at the time of the experiment. 
+
+This RNA is then reverse transcribed to cDNA, because sequencing machines work with DNA, not RNA. The reverse transcription will already modify the relative representation of the different transcripts. At this stage, we could say this collection of cDNA is produced from a sampling of the mRNA (some mRNA molecules will be transcribed more efficiently than some other ones). 
+
+There is also a DNA amplification step with PCR, which modifies the relative proportions of the different transcripts. 
+
+The fragmentation is random, it cuts the full-length cDNA into pieces of approximately 300bp (typical size, but this can be adjusted by the experimenter). Generally, fragment lengths are distributed between ~200 and ~400bp. 
+
+The fragments are then sequenced, but curently the sequencing is only partial: it is restricted to either one extremity (single-end) or both extremities (paired-ends).
+
+
+
+
+
+
+
