@@ -349,7 +349,7 @@ write.table(x = stats.per.sample, sep="\t", quote = FALSE, col.names=NA,
 
 
 ## Print the 10 first rows of the table in markdown format so that it will be nicely displayed in the HTML report
-knitr::kable(t(stats.per.sample[1:10,]))
+knitr::kable(t(stats.per.sample[1:9,]))
 
 ```
 
@@ -414,7 +414,7 @@ par(mfrow=c(1,1))
 ```
 
 
-This distribution does not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in two different samples, and which follows its own distribution. The histograms above can thus be understood as a mixture of ~7000 (number of genes) times 2 (nuber of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
+This distribution does not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in two different samples, and which follows its own distribution. The histograms above can thus be understood as a mixture of ~7000 (number of genes) times 2 (number of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
 
 ### Exercise 4. Statistics per gene (rows of the count table)
 
@@ -542,8 +542,9 @@ hist(log10(apply(counts, 2, sum)), breaks=50,
 ```
 
 We will now create a DGEList object to hold our read counts. DGEList is an example of the custom task-specific structure that are frequently used in Bioconductor to make analyses easier.
+**DGEList()** is the function that converts the count matrix into an edgeR object. BUT Firstly:- we must have a group variables that tells edgeR which samples belong to which group.
 
-```{r dglist_example}
+```{r DGEList_example}
 ## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
 dgList <- DGEList(counts=counts , genes = rownames(counts)) 
 
@@ -573,13 +574,15 @@ dim(dgList) ## For convenience, the DGEList object has a method "dim" that retur
 ###  Filtering out undetected genes
 
 
-#### Why ?
+#### Why we will do filtering out undetected genes?
+in view of these genes could not adequately represented or not have enough reads to contribute to analysis. in addition that the low count reads it would be impossible to detecte differential expression.  
 
-**Motivation: ** now we will apply a filter to discard genes that remain undetectedin almost all the samples.
+**Motivation: ** now we will apply a filter to discard genes that remain undetected in almost all the samples.
 
 **Explanation: ** In our dataset we have approximatly 7125 Genes. However, many of them will not be expressed, or will not be represented by enough reads to contribute to the analysis. Removing these genes means that we ultimately have fewer tests to perform, thereby we will reduce the problems associated with multiple testing by using **cpm** (= **Counts per million**), whereas we will retain only those genes that are repersented at least 1 cpm reads in our two groups for gene "WT" and "SNF2" (MAEQ, Summarized from ^[@Rueda:2015ut]).
 
-#### How ?
+#### How we will do filter out the low count reads?
+By keep only those genes that have at least 1 or 2 read per million in at least 96 samples.and thence we can calcluate the Nomalization factors which correct for the different composition of the samples. the effective Library sizes are then the product of actual Library sizes and these factors.
 
 **Procedure: ** starting from the raw count table, 
 
@@ -589,7 +592,7 @@ dim(dgList) ## For convenience, the DGEList object has a method "dim" that retur
 
 3. We plot an histogram showing the distribution of the number of samples where each gene is detected.
 
-4. We compte a Boolean vector indicating whether each gene has been detected in at least 2 samples. We discard all the genes that fail to pass this criterion. 
+4. We compute a Boolean vector indicating whether each gene has been detected in at least 2 samples. We discard all the genes that fail to pass this criterion. 
 
 ```{r}
 ## Compute counts per million reads
@@ -603,7 +606,7 @@ apply(countsPerMillion, 2, sum)
 nb.values <- nrow(countsPerMillion) * ncol(countsPerMillion)
 print(paste("Total number of values = ", nb.values))
 
-## Count how many measurements axceed 1 count per million (we willl filter our the measurements having less than 1 cpm, because these genes are barely detectable or absent)
+## Count how many measurements axceed 1 count per million (we will filter our the measurements having less than 1 cpm, because these genes are barely detectable or absent)
 countcheck <- countsPerMillion > 1 # Build a data frame indicating, for each measurement in the count table, whether it is above 1 CPM
 # View(countcheck)
 countcheck.sum <- sum (countsPerMillion > 1)
@@ -614,6 +617,7 @@ print(paste(sep="", "Percent of values > 1CPM: ", round(digits=1, 100*countcheck
 
 
 ## show the process from counts to filtered genes
+
 kable(counts[1:10, ], caption = "Raw counts per gene in each sample.")
 kable(countsPerMillion[1:10, ], caption = "Counts per million reads (normalized counts).")
 kable(countcheck[1:10, ], caption = "Counts per million reads (normalized counts).")
@@ -660,6 +664,7 @@ apply(cpm(dgList), 2, sum)
 #### What ?
 
 What do we observe ? What do we conclude (answer the original question of the motivation) ?
+
 
 *Interpretation of the result: ** Among the XXX genes in our orginal count table, XXX (YYY%) were filtered out because they wer detected in less than 2 samples. 
 
@@ -775,6 +780,8 @@ abline(h=c(-1,1),col=2)
 
 ```
 
+# Estimating Dispersions
+The first dispersion type to calculate is the common dispersion. **in the common dispersion stting** each gene gets assigned the same dispersion estimate. The output of the estimation will include the estimate as well as some other elements added to the edgeR Object, cds. 
 
 
 ```{r now we Estimating Dispersions }
@@ -788,12 +795,18 @@ cds$common.dispersion
 SD <- sd(cds$counts)
 sqrt(SD)
 
-cds <- estimateTagwiseDisp(cds, prior.df =   10)
+cds <- estimateTagwiseDisp(cds, prior.df =0,5319)
 summary(cds$tagwise.dispersion)
 ## More shrinkage / Sqeezing toward the common 
-cds <- estimateTagwiseDisp(cds , prior.df = 25)
+cds <- estimateTagwiseDisp(cds , prior.df = 1.5)
 summary(cds$tagwise.dispersion)
 ```
+
+to undesstand what this value means, recall the parameterization for the variance of the negative Bionomial is $$ v(\mu) =  \mu +{\mu^2} phy $$.
+for Poisson it's $$v(\mu) =  \mu $$. the implied Standard Deviations are the squere-roots of the variances. 
+Once the common disprsion is estimated we can estimate the tagwise dispersions. in our senario, each gene will get its own unique dispersion estimate. but the common dispersion is still used in the calcuation. The tagwise disparsions are squeezed toward the common value.** the amount of squeezing** is governed by the paramter prior.n (italic). The higher prior.n, the closer the estimates will be to the common dispersion. The recommended value is the nearest integer to 50/(#samples - #groups).
+For our yeast dataset that's 50/(96-2)= 0,5319
+
 
 ```{r Plotting the Mean-Variance relationship }
 meanVarPlot <- plotMeanVar(cds, show.raw.vars = TRUE ,
