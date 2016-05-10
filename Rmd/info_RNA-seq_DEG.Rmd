@@ -24,7 +24,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-# Context of the analyses
+# Context of the analysis
 
 
 ## Conditions
@@ -54,9 +54,24 @@ The bioinformaicians then made a mapping of these short reads onto the reference
 This is your input dataset:  a **count table** with one row per gene, one column per sample, and each value indicates the number of reads that were found for that gene in the sequencing results. 
 
 ## <font color="red">What is the main goal of differential expression analysis</font> ?
+**Historical review**
+in the 1960s a consensus emerged  that cells differentiate through differential gene expression. The three postulates of differential gene expression are as follows:
+1.Every cell nucleus contains the complete genome established in the fertilized egg. In molecular terms, the DNAs of all differentiated cells are identical.
+2.The unused genes in differentiated cells are not destroyed or mutated, and they retain the potential for being expressed.
+3.Only a small percentage of the genome is expressed in each cell, and a portion of the RNA synthesized in the cell is specific for that cell type.
+
+**Differential Expression ** 
+A gene is declared differentially expressed, if an observed difference or change in read counts between two experimental conditions is statistically significant, i.e. if the difference is greater than what would be expected just due to random
+variation.
+Statistical tools for microarrays were based on numerical intensity values.
+Statistical tools for RNA-seq instead need to analyze read-count distributions.
 
 
-Detect genes that ...
+
+
+Detect genes that have changed significaltly in abundance a cross experimental conditions.in general, we looking into table that summarized count data for each library thence performing statistical testing between samples of interest.
+
+There are many methods have been used to develop the analysis of differentail expression like as microarray data and etc. But the RNA-Seq gives a discrete measurement for each gene, where trasformation of count data in not well approximated by countinuous distributions. espicailly in the lower count range and for small samples. therefore the appropriate statistical moleds for count dta are vital to extracting the most informaton from RNA-Seq Data.  
 
 
 ****************************************************************
