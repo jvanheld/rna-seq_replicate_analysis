@@ -24,7 +24,43 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-## Fast reasoning
+# Context of the analyses
+
+
+## Conditions
+
+You dispose of two or more groups of samples, each corresponding to a given **"condition"**. For the sake of simplicity, we will start with two-group comparisons. Multi-group comparisons can be done, but rely on different methods.
+
+Conditions can represent many different things. 
+
+- genotype (for example in Gierliski 2015, we have two genotypes: WT and Snf2 mutant);
+- disease versus healthy (for example in Li 2014, there are 92 samples of skin with psoriasis, and 82 normal skin samples);
+- growth condition (for example yeast cells cultured with different carbon sources)
+- treatment (for example human cells treated with a given drug versus untreated control)
+- Disease-vector insects (e.g. mosquito) that are either infected or non-infected by a parasite (e.g. the malaria agent, Plasmodium falciparum)
+- Bacteria samples from very different environment
+- ...
+- ...
+
+
+## Data sets
+
+
+For each sample, biologists collected the RNA, obtained complementary DNA (cDNA), fragmented it, and sequencd the extremities of the fragments; The results is a file with short reads. 
+
+The bioinformaicians then made a mapping of these short reads onto the reference genome, and compared the positions of the reads with the location of annotated genes. They counted the number of reads per gene in each sample. 
+
+
+This is your input dataset:  a **count table** with one row per gene, one column per sample, and each value indicates the number of reads that were found for that gene in the sequencing results. 
+
+## <font color="red">What is the main goal of differential expression analysis</font> ?
+
+
+Detect genes that ...
+
+
+****************************************************************
+# Fast reasoning
 
 RNA-seq is based on the collection of RNA molecules from a biological sample.
 
