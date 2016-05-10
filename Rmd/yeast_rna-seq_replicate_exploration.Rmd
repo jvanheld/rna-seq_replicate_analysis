@@ -762,20 +762,20 @@ Now, we can find our differentially expressed genes. After fitting the Model, we
 
 fit <- glmFit(dgList,designMat)
 lrt <- glmLRT(fit)
-?topTags
+# ?topTags
 edgeR_result <- topTags(lrt)
 
 attributes(topTags(lrt))
- topTags(lrt)$table        
+topTags(lrt)$table        
 #write.table(topTags(lrt)$table, file ='edgeR/edgeR_Result.RData',
 #      sep ="\t" , quote= FALSE  )
 ## Finally, we can Plot the Log-fold changes of all the genes, and the highlight those that are differentially expressed
-?decideTests
+#?decideTests
 
 deGenes <- decideTestsDGE(lrt,p=0.001)
 deGenes
 deGenes <-  rownames(lrt)[as.logical(deGenes)]
-plotSmear(lrt, d.tags=deGenes)
+plotSmear(lrt, de.tags=deGenes)
 abline(h=c(-1,1),col=2)
 
 ```
@@ -795,17 +795,14 @@ cds$common.dispersion
 SD <- sd(cds$counts)
 sqrt(SD)
 
-cds <- estimateTagwiseDisp(cds, prior.df =0,5319)
+cds <- estimateTagwiseDisp(cds, prior.df =0.5319)
 summary(cds$tagwise.dispersion)
 ## More shrinkage / Sqeezing toward the common 
 cds <- estimateTagwiseDisp(cds , prior.df = 1.5)
 summary(cds$tagwise.dispersion)
 ```
 
-to undesstand what this value means, recall the parameterization for the variance of the negative Bionomial is $$ v(\mu) =  \mu +{\mu^2} phy $$.
-for Poisson it's $$v(\mu) =  \mu $$. the implied Standard Deviations are the squere-roots of the variances. 
-Once the common disprsion is estimated we can estimate the tagwise dispersions. in our senario, each gene will get its own unique dispersion estimate. but the common dispersion is still used in the calcuation. The tagwise disparsions are squeezed toward the common value.** the amount of squeezing** is governed by the paramter prior.n (italic). The higher prior.n, the closer the estimates will be to the common dispersion. The recommended value is the nearest integer to 50/(#samples - #groups).
-For our yeast dataset that's 50/(96-2)= 0,5319
+> "to undesstand what this value means, recall the parameterization for the variance of the negative Bionomial is $$ v(\mu) =  \mu +{\mu^2} \phi $$. for Poisson it's $$v(\mu) =  \mu $$. the implied Standard Deviations are the squere-roots of the variances.  Once the common disprsion is estimated we can estimate the tagwise dispersions. in our senario, each gene will get its own unique dispersion estimate. but the common dispersion is still used in the calcuation. The tagwise disparsions are squeezed toward the common value.** the amount of squeezing** is governed by the paramter prior.n (italic). The higher prior.n, the closer the estimates will be to the common dispersion. The recommended value is the nearest integer to 50/(#samples - #groups). For our yeast dataset that's round(50/(96-2))=1" Quoted from S.Ruddy, 2011.
 
 
 ```{r Plotting the Mean-Variance relationship }
