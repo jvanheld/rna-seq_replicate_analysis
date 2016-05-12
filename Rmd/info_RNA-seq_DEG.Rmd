@@ -56,21 +56,17 @@ This is your input dataset:  a **count table** with one row per gene, one column
 ## <font color="red">What is the main goal of differential expression analysis</font> ?
 **Historical review**
 
-<font color="red">The text below is merely a copy-oaste from a textbook. This should not be done without appropriate quotes and citation (if you don't quote the sentences, your document can be considered as plagiarism). </font>
+<font color="red">The text below is merely a copy-Paste from a textbook. This should not be done without appropriate quotes and citation (if you don't quote the sentences, your document can be considered as plagiarism). </font>
 
 "in the 1960s a consensus emerged  that cells differentiate through differential gene expression. The three postulates of differential gene expression are as follows:
 1.Every cell nucleus contains the complete genome established in the fertilized egg. In molecular terms, the DNAs of all differentiated cells are identical.
 2.The unused genes in differentiated cells are not destroyed or mutated, and they retain the potential for being expressed.
 3.Only a small percentage of the genome is expressed in each cell, and a portion of the RNA synthesized in the cell is specific for that cell type." Source: Developmental Biology. 6th edition, free on-line edition <http://www.ncbi.nlm.nih.gov/books/NBK10061/>
 
-You need now to show me that you understand the concepts, so please rephrase them with your **own** words. 
+<font color ="blue"> **Differential Expression ** </font>
 
-**Differential Expression ** 
-
-"A gene is declared differentially expressed, if an observed difference or change in read counts between two experimental conditions is statistically significant, i.e. if the difference is greater than what would be expected just due to random
-variation.
-Statistical tools for microarrays were based on numerical intensity values.
-Statistical tools for RNA-seq instead need to analyze read-count distributions." (please add the source OR suppress the citation)
+A Gene is considerd as differentially expressed, if there are differences or changes in read counts between two experimental conditions is statistically significant, where if the difference is greater than what would be expected just due to random
+variation. in the statistical side the Statistical tools for microarrays were based on numerical intensity values.furthermore, for RNA-seq analysis instead need to analyze read-count distributions.
 
 
 
