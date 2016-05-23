@@ -99,8 +99,14 @@ is a critical componanet of the processing pipeline, which allowing which allowi
 a) accurate estimation.
 b) detecting of diffrential expression (DE).
 
+**Normalization factors** through several samples can be calculated by selecting one sample as reference and calculating the TMM, RPM,BCN factors for each non-reference sample.  these Normalisation factors can built into statistical model used to test for Deffrential expression.  
+
 ** The aim of normalisation**
-to remove systematic technical efects that occur in data to ensure that technical bias has minimal impact on the results. in addition that the reality of RNA-seq data analysis is not simlpe where we need to standardize data between samples by scalling the number of reads in a given lane or library to a common value across all sequenced libraries in the experiment.
+1- to remove systematic technical efects that occur in data to ensure that technical bias has minimal impact on the results. in addition that the reality of RNA-seq data analysis is not simlpe where we need to standardize data between samples by scalling the number of reads in a given lane or library to a common value across all sequenced libraries in the experiment.
+2- Normalisation is an essentail step for inferring true differences in expression between samples. 
+
+**A hypotical senario**
+Estimated normalisation factors shoud ensure that a genes with the same expression levels in many samples are not detected as Deffrentail Expression.
 
 ## what are the approaches can differ in the distributional assmptions made for inferring differences?
 by using modeled the observed counts for gene with a mean that includes a factor for the total number of reads. for simplicity data follow an approximate power law distribution and proposed a normalization startegy that equates the read count distributions acros samples.
@@ -110,9 +116,29 @@ a) library size scaling  for many biological applications.
 b) A number of tags expected to map a gene is not only dependent on the expression level also length of gene.
 c) the composition of RNA Population that is being sampled.
 
+# what is the approperiate metric of expression to compare across samples?
+a) computer the proportion od each gene's reads relative to the total number of reads and compare that across all samples. by trasforming the original data OR by introducing a constatnt into a statistical model.
 
+# The population of RNA-Seq Data:-
+1- the total number of reads for gene is dependent not only on gene's expression level and length, but also on the population of RNA-Seq for which it is belong.
 
+# Statistical Testing:-
+We will use sage.test function to calculate a Fisher exact $P$-Value for each gene. For two libraries, the effective library sizes are calculated by multiplying/dividing thw squer root of the estimated normalisation factor with the original library size.
 
+# How we can make comparision with technical replicates?
+through this analysis that utilizes an offset to account for the library size and a likelihood ratio (LR) statistics to test for differences in expression between libraries.
+LR testing framework is used to calculate $P$-valuefor DE between tissues.
+
+# how we can interpret the Statistical significance for Genomewide studies?
+a- GenomeWide stdies are considered thousands of fetures represented in a genome. where these **Features** can be Genes, all nucleotide words of a cirtain length, single-nucleotide ploymorphism markers, etc. 
+b- for each feature, a null hypothesis is tested against an alternative hypothesis. where we can regard that a feature is truly null if the null hypothesis is trure, and a feature is truly alternative if the alternative hypothesis is true. consequently if a feature is called significant, then the null hypothesis is rejected in favor of the alternative hypothesis.
+c- the overlall goal is to propose and estimate a measure of significance for each feature that meets the practical goals of the genomewide study and that is easily interpreted in terms of the simultaneous testing of thousands of features.
+
+# How we can measure of significance for growing class of genomewide tests of significance?
+Storey and Tibshirani said the q vaule is an extension of a quantity and they called the "Fales discovery rate"(FDR). A FDR methods has been used in detecting diffrential gene expression in DNA microarray experiments.
+** the difference between p & q Value**
+Similarly to the P Value, the q Value gives each feature its own individual measure of significance, whereas the p value is a measure of significace in terms of the FDR, given a rule for calling features significant **the fales positive rate is the rate that truly null features are called significant**, BUT the FDR is the rate that significant features are truly null.
+in light of the definition of the false positive rate, a p-value cutoff say little about the content of of the features actaully called significant, the q values directly provide meaninfull measure among the features called significant, becuase of significan features will likely undergo some susequent biological varification,  a q-value threshold  can be phrased in practical terms as the proportion of significant features that turn out to be false leads.
 
 
 
