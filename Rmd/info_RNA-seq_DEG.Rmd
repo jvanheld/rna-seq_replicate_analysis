@@ -99,8 +99,14 @@ is a critical componanet of the processing pipeline, which allowing which allowi
 a) accurate estimation.
 b) detecting of diffrential expression (DE).
 
+**Normalization factors** through several samples can be calculated by selecting one sample as reference and calculating the TMM, RPM,BCN factors for each non-reference sample.  these Normalisation factors can built into statistical model used to test for Deffrential expression.  
+
 ** The aim of normalisation**
-to remove systematic technical efects that occur in data to ensure that technical bias has minimal impact on the results. in addition that the reality of RNA-seq data analysis is not simlpe where we need to standardize data between samples by scalling the number of reads in a given lane or library to a common value across all sequenced libraries in the experiment.
+1- to remove systematic technical efects that occur in data to ensure that technical bias has minimal impact on the results. in addition that the reality of RNA-seq data analysis is not simlpe where we need to standardize data between samples by scalling the number of reads in a given lane or library to a common value across all sequenced libraries in the experiment.
+2- Normalisation is an essentail step for inferring true differences in expression between samples. 
+
+**A hypotical senario**
+Estimated normalisation factors shoud ensure that a genes with the same expression levels in many samples are not detected as Deffrentail Expression.
 
 ## what are the approaches can differ in the distributional assmptions made for inferring differences?
 by using modeled the observed counts for gene with a mean that includes a factor for the total number of reads. for simplicity data follow an approximate power law distribution and proposed a normalization startegy that equates the read count distributions acros samples.
@@ -110,7 +116,18 @@ a) library size scaling  for many biological applications.
 b) A number of tags expected to map a gene is not only dependent on the expression level also length of gene.
 c) the composition of RNA Population that is being sampled.
 
+# what is the approperiate metric of expression to compare across samples?
+a) computer the proportion od each gene's reads relative to the total number of reads and compare that across all samples. by trasforming the original data OR by introducing a constatnt into a statistical model.
 
+# The population of RNA-Seq Data:-
+1- the total number of reads for gene is dependent not only on gene's expression level and length, but also on the population of RNA-Seq for which it is belong.
+
+# Statistical Testing:-
+We will use sage.test function to calculate a Fisher exact $P$-Value for each gene. For two libraries, the effective library sizes are calculated by multiplying/dividing thw squer root of the estimated normalisation factor with the original library size.
+
+# How we can make comparision with technical replicates?
+through this analysis that utilizes an offset to account for the library size and a likelihood ratio (LR) statistics to test for differences in expression between libraries.
+LR testing framework is used to calculate $P$-valuefor DE between tissues.
 
 
 
