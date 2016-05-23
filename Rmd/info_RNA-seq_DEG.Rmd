@@ -1,6 +1,6 @@
 ---
 title: "information_about_RNA-seq_DEG.Rmd"
-author: "Jacques van Helden"
+author: "Mustafa Abu El-Qumsan and Jacques van Helden"
 date: '`r Sys.Date()`'
 output:
   html_document:
@@ -75,7 +75,7 @@ variation. in the statistical side the Statistical tools for microarrays were ba
 
 **How ?** 
 
-In general, we are looking into table that summarizes count data for each library (biological sample)  thence performing statistical testing between groups of samples of interest. Indeed, in order to evaluate if the difference between two experimental conditions is significant, it is not sufficient to dispose of a single biological sample per condition. Instead, we need to have as many **replicates** as possible for each condition. 
+In general, we are looking into table that summarizes count data for each library (biological sample)  thence performing statistical testing between groups of samples of interest. Indeed, in order to evaluate if the difference between two experimental conditions is significant, it is not sufficient to dispose of a single biological sample per condition. Instead, we need to have as many **replicates** as possible for each conditqion. 
 
 
 The biological concept of replicates corresponds to the statistical concept of "sample". Sorry for the confusion, we will sometimes use sample in the biological sense ( a single experiment, for example a piece of tissue, a drop of blood, ...), whereas for the statistician one sample includes the observations from different individuals. 
