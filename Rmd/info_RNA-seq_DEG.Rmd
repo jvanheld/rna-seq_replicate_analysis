@@ -54,6 +54,36 @@ The bioinformaicians then made a mapping of these short reads onto the reference
 This is your input dataset:  a **count table** with one row per gene, one column per sample, and each value indicates the number of reads that were found for that gene in the sequencing results. 
 
 ## <font color="red">What is the main goal of differential expression analysis</font> ?
+
+
+Mustafa: The general goal of differential analysis is to highlight genes that have been changed in abundance between two or more conditions. 
+
+### Some corrections: 
+
+
+- the gene does not actually change: the genome contains exactly 2 copies of each chromosome (because the yeast is diploid) and thus 2 copies of each one of the 7125 genes.
+
+- what does change in abundance is the number of RNA molecules (transcripts) produced by transcribing the different genes. 
+
+
+- "highlight" is abit vague, I would say "detect" (detail)
+
+## Some comments on study case 1: yeast dataset from Schurch et al. 
+
+Dataset: 48 samples from the wild-type (WT) genotype ("normal" yeast) + 48 samples from a Snf2 mutatn genotype. 
+
+You can find information about Snf2 in the Saccharomyces cerevisiae database (**SGD**): 
+
+> Catalytic subunit of the SWI/SNF **chromatin remodeling complex**; involved in **transcriptional regulation**; contains DNA-stimulated ATPase activity; functions interdependently in transcriptional activation with Snf5p and Snf6p. <http://www.yeastgenome.org/locus/S000005816/overview>
+
+Sfn2 is a protein having a very broad effect on the expression of other genes, because it changes the conformation of the chromatin, and thus its accessibility to other transcription factors. 
+
+In te Schurch RNA-seq study;, **many** genes are differentially expressed (you will see this after the analysis). 
+
+
+
+<!--
+
 **Historical review**
 
 <font color="red">The text below is merely a copy-Paste from a textbook. This should not be done without appropriate quotes and citation (if you don't quote the sentences, your document can be considered as plagiarism). </font>
@@ -62,11 +92,18 @@ This is your input dataset:  a **count table** with one row per gene, one column
 1.Every cell nucleus contains the complete genome established in the fertilized egg. In molecular terms, the DNAs of all differentiated cells are identical.
 2.The unused genes in differentiated cells are not destroyed or mutated, and they retain the potential for being expressed.
 3.Only a small percentage of the genome is expressed in each cell, and a portion of the RNA synthesized in the cell is specific for that cell type." Source: Developmental Biology. 6th edition, free on-line edition <http://www.ncbi.nlm.nih.gov/books/NBK10061/>
+-->
 
 <font color ="blue"> **Differential Expression ** </font>
 
-A Gene is considerd as differentially expressed, if there are differences or changes in read counts between two experimental conditions is statistically significant, where if the difference is greater than what would be expected just due to random
-variation. in the statistical side the Statistical tools for microarrays were based on numerical intensity values.furthermore, for RNA-seq analysis instead need to analyze read-count distributions.
+With RNA-seq data, a  gene is considerd as differentially expressed, if there are statistically significant differences or changes in read counts between two experimental conditions. By significant, we mean that the difference is greater than what would be expected just due to random variation. 
+
+
+In the statistical side the Statistical tools for microarrays were based on numerical intensity values, whcih are represented by Real values (with decimal points). By contrast,  RNA-seq analysis instead relies on read-count distributions (integer values). 
+
+For RNA-seq, we will thus typically model the data with  discrete probabilistic distributions (Poisson, binomial, hypergeometric, negative binomial). The choice of the appropriate distribution has been (and still is) a matter of debate among statisticians. 
+
+In the first articles about RNA-seq analysis, people thought they could use the Poisson distribution. However, it was later noticed that the actual dataset had a much wider variance than what would be expected from a Poisson distribution. By definition, in Poisson the variance equals the mean. In RNA-seq data, the variance is typically biger than the mean. For this reason, the **negative binomial** has been proposed, because it enables to specify a variance bigger than the mean. 
 
 
 
@@ -75,19 +112,62 @@ variation. in the statistical side the Statistical tools for microarrays were ba
 
 **How ?** 
 
+## Semantic remark about samples and replicates
+
 In general, we are looking into table that summarizes count data for each library (biological sample)  thence performing statistical testing between groups of samples of interest. Indeed, in order to evaluate if the difference between two experimental conditions is significant, it is not sufficient to dispose of a single biological sample per condition. Instead, we need to have as many **replicates** as possible for each conditqion. 
 
 
 The biological concept of replicates corresponds to the statistical concept of "sample". Sorry for the confusion, we will sometimes use sample in the biological sense ( a single experiment, for example a piece of tissue, a drop of blood, ...), whereas for the statistician one sample includes the observations from different individuals. 
 
-Example: psoriasis paper: 
+### Example: psoriasis paper
 
-the population is the set of all the people around the world that suffer from psoriasis. You can never obtain biological samples from these millions of people. The statistical sample is the subset of 92 persons suffering from psoriasis from whom Li and co-workers obtained a biological sample (i.e. a punch biopsis).
+The population is the set of all the people around the world that suffer from psoriasis. You can never obtain biological samples from these millions of people. The statistical sample is the subset of 92 persons suffering from psoriasis from whom Li and co-workers obtained a biological sample (i.e. a punch biopsis).
 
 
-## <font color = "blue"> Trascriptal Architecture </font>
-a cell's function have variant complex and dynamic aspect this namaly in brief tarnscripts (mRNAs).
+## <font color = "blue"> Transcriptional Architecture </font>
 
+A cell's function have variant complex and dynamic aspects this namaly in brief tarnscripts (mRNAs).
+
+
+### Semantics about RNA-seq and transcripts
+
+
+Genes (DNA) are used as templates to produce RNA molecules. The process by which RNA is synthesized basedon a DNA template is called **Transcription**. The RNA resulting from this process is called **transcript**. In the context of gene expression, **transcript** and **RNA** thus denote the same molecule. The difference is that "RNA" refers to its composition (ribonucleic acid, made of ribonucleotides, ...), whereas "transcript" refers to the way it was produced (the result of transcription). IN summary, and RNA is a transcript, and a transcript is an RNA (in this context). 
+
+Some nice videos animation about tanscription (I suggest you listen to it when you can): 
+
+- <https://www.youtube.com/watch?v=ztPkv7wc3yU>
+
+Beware: DNA is formed of the 4 deoxyribonucleotides A, T, G, C, whereas RNA is made of 4 ribonucleotides A, **U**, G, C. There is a one-t-one corespondence between A-A, T-U, C-C and G-G, and they are asembled according to the complementarity.
+
+| DNA template | RNA molecule  |
+|--------------|---------------|
+| A | U |
+| T | A |
+| C | G |
+| G | C |
+| | |
+
+- <https://www.youtube.com/watch?v=WsofH466lqk>
+- ...
+
+
+
+### RNA versus mRNA
+
+Now there is an important distinction between RNA and mRNA. **mRNA** stands for "**messenger** RNA", i.e. an RNA that will serve as model to synthesize a protein, via a process called ... . Beware, the process does not "transform" RNA into a protein. Rather, a protein is assembled on the basis of the information comprized in the RNA (the succession of its nucleotides), but the RNA molecule is not changed by this process: the same RNA molecule can serve as model to synthesize several proteins. 
+
+About transcription, splicing, translation: 
+
+- <https://www.youtube.com/watch?v=-K8Y0ATkkAI>
+
+You need to go further in learning the basic concepts of molecular biology: DNA, RNA, transcription, splicing, translation, exon, intron, .... You should be able to define all these concepts, explain them, and use them in a text that you ar writing for your thesis. All these concepts must become familiar to you. 
+
+General textbooks about molecular biology:
+
+- Genes (Salva will send you the pdf)
+- A somewhat outdated textbook : <http://gene.bio.jhu.edu/bm2whole.pdf>
+- Alberts Molecular Biology of the Cell <http://osp.mans.edu.eg/tmahdy/surgeons/ebooks/Books/Alberts%20-%20Molecular%20Biology%20of%20the%20Cell.pdf>
 
 ## <font color = "blue"> Next generation sequencing </font>
 
@@ -106,10 +186,17 @@ b) detecting of diffrential expression (DE).
 2- Normalisation is an essentail step for inferring true differences in expression between samples. 
 
 **A hypotical senario**
+
 Estimated normalisation factors shoud ensure that a genes with the same expression levels in many samples are not detected as Deffrentail Expression.
 
 ## what are the approaches can differ in the distributional assmptions made for inferring differences?
+
 by using modeled the observed counts for gene with a mean that includes a factor for the total number of reads. for simplicity data follow an approximate power law distribution and proposed a normalization startegy that equates the read count distributions acros samples.
+
+JvH answer: good question,  answer is not obvious, this is really a matter of debate among scientists. Today, mot people use the negative binomial in a more or less dogmatic way, because this is what is done by the two most popular packages (edgeR and DESeq2).  The article by Schurch aims at evaluatng this kind of questions. They do not really test the underlying distribution, because for this they would need hundreds of samples, even 48 is not enough. However, they did indirectly some tests by comparing different tools, each tool relying ona different underlying distribution. 
+
+Exercise read this article, in particular their Table 1. TABLE 1. RNA-seq differential gene expression tools and statistical tests. 
+
 
 ## what are the appoperiate factors for normalizing between replicate samples of an RNA population?
 a) library size scaling  for many biological applications.
@@ -117,7 +204,7 @@ b) A number of tags expected to map a gene is not only dependent on the expressi
 c) the composition of RNA Population that is being sampled.
 
 # what is the approperiate metric of expression to compare across samples?
-a) computer the proportion od each gene's reads relative to the total number of reads and compare that across all samples. by trasforming the original data OR by introducing a constatnt into a statistical model.
+a) computer the proportion od each gene's reads relative to the total number of reads and compare that acrosas all samples. by trasforming the original data OR by introducing a constatnt into a statistical model.
 
 # The population of RNA-Seq Data:-
 1- the total number of reads for gene is dependent not only on gene's expression level and length, but also on the population of RNA-Seq for which it is belong.
