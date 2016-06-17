@@ -349,7 +349,7 @@ write.table(x = stats.per.sample, sep="\t", quote = FALSE, col.names=NA,
 
 
 ## Print the 10 first rows of the table in markdown format so that it will be nicely displayed in the HTML report
-knitr::kable(t(stats.per.sample[1:9,]))
+knitr::kable(t(stats.per.sample[1:5,]))
 
 ```
 
@@ -550,9 +550,9 @@ dgList <- DGEList(counts=counts , genes = rownames(counts))
 
 # print(dgList) ## Just for debugging, not to print in the output
 # dgList$samples
-head(dgList$counts)
-head(dgList$genes)
-dgList$genes
+head(dgList$counts[1:5])
+head(dgList$genes[1:5,])
+#dgList$genes
 #names(cds)
 attributes(dgList)
 #cds$samples ## Basic 
@@ -597,10 +597,10 @@ By keep only those genes that have at least 1 or 2 read per million in at least 
 ```{r}
 ## Compute counts per million reads
 countsPerMillion <- cpm(dgList)
-summary(countsPerMillion)
+summary(countsPerMillion)[1:10]
 
 ## By definition, th counts per million should bring the sum of counts to precisely 1 million, for each sample. We can check this by running apply(sum) on the CPM table.
-apply(countsPerMillion, 2, sum)
+summation = apply(countsPerMillion, 2, sum)
 
 # The total number of values in the count table
 nb.values <- nrow(countsPerMillion) * ncol(countsPerMillion)
@@ -618,9 +618,9 @@ print(paste(sep="", "Percent of values > 1CPM: ", round(digits=1, 100*countcheck
 
 ## show the process from counts to filtered genes
 
-kable(counts[1:10, ], caption = "Raw counts per gene in each sample.")
-kable(countsPerMillion[1:10, ], caption = "Counts per million reads (normalized counts).")
-kable(countcheck[1:10, ], caption = "Counts per million reads (normalized counts).")
+Raw.count.gene = kable(counts[1:10, ], caption = "Raw counts per gene in each sample.")
+count.million.read = kable(countsPerMillion[1:10, ], caption = "Counts per million reads (normalized counts).")
+counts.million.read.normalized = kable(countcheck[1:10, ], caption = "Counts per million reads (normalized counts).")
   
 ## For each gene (row), count the sum of rows of the countcheck, which indicate the number of samples in which this gene was detected above 1 CPM. 
 detected.samples.per.gene <- rowSums(countcheck)
@@ -648,8 +648,8 @@ print(paste("Percent of kept genes: ", round(digits=1, 100*length(keep)/nrow(cou
 ## Apply the filter to the dgList: select the genes that were TRUE in the "kept" vector.
 dgList<-dgList[names(keep),]
 dgList
-summary(cpm(dgList))
-apply(cpm(dgList), 2, sum)
+summary(cpm(dgList))[1:10]
+no.true.gene = apply(cpm(dgList), 2, sum)
 
 
 
@@ -673,11 +673,11 @@ What do we observe ? What do we conclude (answer the original question of the mo
 It is important to Normalise RNA-Seq both within and between samples, edgeR implements the trimmed mean of M-Values (TMM) method.
 
 ```{r NORMALISATION by unsing edgR packege}
-?calcNormFactors
+calcNormFactors
 dgList<- calcNormFactors(dgList, method = "TMM")
 
 attributes(dgList)
-kable(dgList[1:10, ])
+# kable(dgList[1:1,1:1 ])
 
 
 ```
@@ -702,7 +702,7 @@ Interpretation of the result: in the two first components, the distance between 
 
 Interestingly, the first component perfectly separates the WT from the Snf2 samples (the two genotypes). We also notice the presence of some "outliers", i.e. WT samples projecting outside of the WT cluster, and Snf2 samples projected outside of the Snf2 cluster. 
 
-Mustafa: please check if these samples correspond to those that were discarded by Schunk et al (see today's seminar by Denis).
+
 
 # Setting up the Model 
 
@@ -711,15 +711,18 @@ We will specify the design of our Matrix, which describes the setup of our exper
 ```{r setting up the Model}
 
 ## Define a vector of the same length as the number of samples, indicating the group of each sample (2 groups: WT and SNF2)
-attributes(counts)
+
+#attributes(counts)
 sample.type <- rep("WT", ncol(dgList)) ## Initialize the vector with the same value (WT) for all the entries (this is temporary)
-sample.type 
-colnames(dgList)
+
+#sample.type 
+#colnames(dgList)
 sample.type[grep("SNF2",colnames(dgList))]<- "SNF2"
-sample.type ## Check that the 48 first samples are WT, and then 48 of them are  SNF2
+
+#sample.type ## Check that the 48 first samples are WT, and then 48 of them are  SNF2
 table(sample.type)
 sample.replicates <- c(1:48, 1:48)
-sample.replicates
+#sample.replicates
 
 designMat <- model.matrix(~sample.replicates + sample.type) ### this need to Check with prof. Jacques.
 designMat
@@ -753,7 +756,6 @@ plotBCV(dgList,
 
 ```
 
-Mustafa: please find the original paper from edgeR, where they describe all these statistics (e.g. the biological coefficient of variation), and try to understand what it represents; Then we discuss next week. 
 
 # Differential Expression 
 Now, we can find our differentially expressed genes. After fitting the Model, we can use **topTags()** function to explore the results, and set thresholds to identify subset of differentially expressed genes.

@@ -1,0 +1,175 @@
+---
+title: "information_about_RNA-seq_DEG.Rmd"
+author: "Mustafa Abu El-Qumsan and Jacques van Helden"
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    fig_caption: yes
+    highlight: zenburn
+    theme: cerulean
+    toc: yes
+    toc_depth: 3
+    toc_float: true
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: 3
+  word_document: default
+bibliography: bibliography_rna-seq.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Context of the analysis
+
+
+## Conditions
+
+You dispose of two or more groups of samples, each corresponding to a given **"condition"**. For the sake of simplicity, we will start with two-group comparisons. Multi-group comparisons can be done, but rely on different methods.
+
+Conditions can represent many different things. 
+
+- genotype (for example in Gierliski 2015, we have two genotypes: WT and Snf2 mutant);
+- disease versus healthy (for example in Li 2014, there are 92 samples of skin with psoriasis, and 82 normal skin samples);
+- growth condition (for example yeast cells cultured with different carbon sources)
+- treatment (for example human cells treated with a given drug versus untreated control)
+- Disease-vector insects (e.g. mosquito) that are either infected or non-infected by a parasite (e.g. the malaria agent, Plasmodium falciparum)
+- Bacteria samples from very different environment
+- ...
+- ...
+
+
+## Data sets
+
+
+For each sample, biologists collected the RNA, obtained complementary DNA (cDNA), fragmented it, and sequencd the extremities of the fragments; The results is a file with short reads. 
+
+The bioinformaicians then made a mapping of these short reads onto the reference genome, and compared the positions of the reads with the location of annotated genes. They counted the number of reads per gene in each sample. 
+
+
+This is your input dataset:  a **count table** with one row per gene, one column per sample, and each value indicates the number of reads that were found for that gene in the sequencing results. 
+
+## <font color="red">What is the main goal of differential expression analysis</font> ?
+**Historical review**
+
+<font color="red">The text below is merely a copy-Paste from a textbook. This should not be done without appropriate quotes and citation (if you don't quote the sentences, your document can be considered as plagiarism). </font>
+
+"in the 1960s a consensus emerged  that cells differentiate through differential gene expression. The three postulates of differential gene expression are as follows:
+1.Every cell nucleus contains the complete genome established in the fertilized egg. In molecular terms, the DNAs of all differentiated cells are identical.
+2.The unused genes in differentiated cells are not destroyed or mutated, and they retain the potential for being expressed.
+3.Only a small percentage of the genome is expressed in each cell, and a portion of the RNA synthesized in the cell is specific for that cell type." Source: Developmental Biology. 6th edition, free on-line edition <http://www.ncbi.nlm.nih.gov/books/NBK10061/>
+
+<font color ="blue"> **Differential Expression ** </font>
+
+A Gene is considerd as differentially expressed, if there are differences or changes in read counts between two experimental conditions is statistically significant, where if the difference is greater than what would be expected just due to random
+variation. in the statistical side the Statistical tools for microarrays were based on numerical intensity values.furthermore, for RNA-seq analysis instead need to analyze read-count distributions.
+
+
+
+*Goal** Detect genes whose transcripts (mRNAs) have changed significantly in abundance across different experimental conditions.  
+
+
+**How ?** 
+
+In general, we are looking into table that summarizes count data for each library (biological sample)  thence performing statistical testing between groups of samples of interest. Indeed, in order to evaluate if the difference between two experimental conditions is significant, it is not sufficient to dispose of a single biological sample per condition. Instead, we need to have as many **replicates** as possible for each conditqion. 
+
+
+The biological concept of replicates corresponds to the statistical concept of "sample". Sorry for the confusion, we will sometimes use sample in the biological sense ( a single experiment, for example a piece of tissue, a drop of blood, ...), whereas for the statistician one sample includes the observations from different individuals. 
+
+Example: psoriasis paper: 
+
+the population is the set of all the people around the world that suffer from psoriasis. You can never obtain biological samples from these millions of people. The statistical sample is the subset of 92 persons suffering from psoriasis from whom Li and co-workers obtained a biological sample (i.e. a punch biopsis).
+
+
+## <font color = "blue"> Trascriptal Architecture </font>
+a cell's function have variant complex and dynamic aspect this namaly in brief tarnscripts (mRNAs).
+
+
+## <font color = "blue"> Next generation sequencing </font>
+
+is steady state RNA (RNA-Seq) gives unprecedented detail about the RNA landscap within cell. where the processing methods used to extract and interpret the information "data generated from short read sequencing", this considered importnat aspect of dealing with large vast a mounts of RNA-Seq data.
+
+
+## <font color = "blue"> The main Goal for Normalisation </font>
+is a critical componanet of the processing pipeline, which allowing which allowing 
+a) accurate estimation.
+b) detecting of diffrential expression (DE).
+
+**Normalization factors** through several samples can be calculated by selecting one sample as reference and calculating the TMM, RPM,BCN factors for each non-reference sample.  these Normalisation factors can built into statistical model used to test for Deffrential expression.  
+
+** The aim of normalisation**
+1- to remove systematic technical efects that occur in data to ensure that technical bias has minimal impact on the results. in addition that the reality of RNA-seq data analysis is not simlpe where we need to standardize data between samples by scalling the number of reads in a given lane or library to a common value across all sequenced libraries in the experiment.
+2- Normalisation is an essentail step for inferring true differences in expression between samples. 
+
+**A hypotical senario**
+Estimated normalisation factors shoud ensure that a genes with the same expression levels in many samples are not detected as Deffrentail Expression.
+
+## what are the approaches can differ in the distributional assmptions made for inferring differences?
+by using modeled the observed counts for gene with a mean that includes a factor for the total number of reads. for simplicity data follow an approximate power law distribution and proposed a normalization startegy that equates the read count distributions acros samples.
+
+## what are the appoperiate factors for normalizing between replicate samples of an RNA population?
+a) library size scaling  for many biological applications.
+b) A number of tags expected to map a gene is not only dependent on the expression level also length of gene.
+c) the composition of RNA Population that is being sampled.
+
+# what is the approperiate metric of expression to compare across samples?
+a) computer the proportion od each gene's reads relative to the total number of reads and compare that across all samples. by trasforming the original data OR by introducing a constatnt into a statistical model.
+
+# The population of RNA-Seq Data:-
+1- the total number of reads for gene is dependent not only on gene's expression level and length, but also on the population of RNA-Seq for which it is belong.
+
+# Statistical Testing:-
+We will use sage.test function to calculate a Fisher exact $P$-Value for each gene. For two libraries, the effective library sizes are calculated by multiplying/dividing thw squer root of the estimated normalisation factor with the original library size.
+
+# How we can make comparision with technical replicates?
+through this analysis that utilizes an offset to account for the library size and a likelihood ratio (LR) statistics to test for differences in expression between libraries.
+LR testing framework is used to calculate $P$-valuefor DE between tissues.
+
+# how we can interpret the Statistical significance for Genomewide studies?
+a- GenomeWide stdies are considered thousands of fetures represented in a genome. where these **Features** can be Genes, all nucleotide words of a cirtain length, single-nucleotide ploymorphism markers, etc. 
+b- for each feature, a null hypothesis is tested against an alternative hypothesis. where we can regard that a feature is truly null if the null hypothesis is trure, and a feature is truly alternative if the alternative hypothesis is true. consequently if a feature is called significant, then the null hypothesis is rejected in favor of the alternative hypothesis.
+c- the overlall goal is to propose and estimate a measure of significance for each feature that meets the practical goals of the genomewide study and that is easily interpreted in terms of the simultaneous testing of thousands of features.
+
+# How we can measure of significance for growing class of genomewide tests of significance?
+Storey and Tibshirani said the q vaule is an extension of a quantity and they called the "Fales discovery rate"(FDR). A FDR methods has been used in detecting diffrential gene expression in DNA microarray experiments.
+** the difference between p & q Value**
+Similarly to the P Value, the q Value gives each feature its own individual measure of significance, whereas the p value is a measure of significace in terms of the FDR, given a rule for calling features significant **the fales positive rate is the rate that truly null features are called significant**, BUT the FDR is the rate that significant features are truly null.
+in light of the definition of the false positive rate, a p-value cutoff say little about the content of of the features actaully called significant, the q values directly provide meaninfull measure among the features called significant, becuase of significan features will likely undergo some susequent biological varification,  a q-value threshold  can be phrased in practical terms as the proportion of significant features that turn out to be false leads.
+
+
+
+
+
+
+
+
+
+There are many methods have been used to develop the analysis of differentail expression like as microarray data and etc. But the RNA-Seq gives a discrete measurement for each gene, where trasformation of count data in not well approximated by countinuous distributions. espicailly in the lower count range and for small samples. therefore the appropriate statistical moleds for count dta are vital to extracting the most informaton from RNA-Seq Data.  
+
+
+****************************************************************
+# Fast reasoning
+
+RNA-seq is based on the collection of RNA molecules from a biological sample.
+
+
+We can consider the full set of RNA molecules found in the biological sample as the population (in the statistical sense) of all the transcripts produced by this sample at the time of the experiment. 
+
+This RNA is then reverse transcribed to cDNA, because sequencing machines work with DNA, not RNA. The reverse transcription will already modify the relative representation of the different transcripts. At this stage, we could say this collection of cDNA is produced from a sampling of the mRNA (some mRNA molecules will be transcribed more efficiently than some other ones). 
+
+There is also a DNA amplification step with PCR, which modifies the relative proportions of the different transcripts. 
+
+The fragmentation is random, it cuts the full-length cDNA into pieces of approximately 300bp (typical size, but this can be adjusted by the experimenter). Generally, fragment lengths are distributed between ~200 and ~400bp. 
+
+The fragments are then sequenced, but curently the sequencing is only partial: it is restricted to either one extremity (single-end) or both extremities (paired-ends).
+
+
+
+
+
+
+
