@@ -668,7 +668,7 @@ What do we observe ? What do we conclude (answer the original question of the mo
 
 *Interpretation of the result: ** Among the XXX genes in our orginal count table, XXX (YYY%) were filtered out because they wer detected in less than 2 samples. 
 
-## NORMALISATION by unsing edgR packege..
+## NORMALISATION by unsing edgeR package
 
 It is important to Normalise RNA-Seq both within and between samples, edgeR implements the trimmed mean of M-Values (TMM) method.
 
@@ -682,9 +682,7 @@ attributes(dgList)
 
 ```
 
-# Data Exploration 
-
-<font color="red">Mustafa, document yourself about multidimensional scaling. There are different methods for MDS. I think that in this case they simply use principal component analysis. Also read about Principal Component Analysis (PCA).</font>
+## Multidimensional scaling
 
 
 Each sample can be viewed as a vector of `r nrow(dgList)` values (one value per gene). We can thus imagine a "sample  space" made of `r nrow(dgList)` dimensions (one dimension per gene) , where the position of each sample is defined by the normalized counts (CPM) of each gene. 
@@ -781,6 +779,25 @@ plotBCV(dgList,
 ```
 
 
+### Manual exploration of the method
+
+```{r}
+
+mean.log2.mediannorm.counts.per.gene <- apply(counts.mednorm.log2, 1, mean)
+sd.log2.mediannorm.counts.per.gene <- apply(counts.mednorm.log2, 1, sd)
+var.log2.mediannorm.counts.per.gene <- apply(counts.mednorm.log2, 1, var)
+
+plot(mean.log2.mediannorm.counts.per.gene, sd.log2.mediannorm.counts.per.gene, col="#BBBBBB", pch=".")
+
+```
+
+Notes:
+
+
+- since some genes may have zero counts in several samples, the corresponding counts were replaced by an arbitrary epsilon, smaller than 1 -> the log2 is smaller than 0. Consequently, the mean log2-counts can be negative for some genes
+
+
+****************************************************************
 # Differential Expression
 
 Now, we can find our differentially expressed genes. After fitting the Model, we can use **topTags()** function to explore the results, and set thresholds to identify subset of differentially expressed genes.
@@ -799,13 +816,43 @@ topTags(lrt)$table
 ## Finally, we can Plot the Log-fold changes of all the genes, and the highlight those that are differentially expressed
 #?decideTests
 
+## This methods returns a 3-values variable indicating whether the gene was significantly up-regulated (1), down-regulated (-1) or non-significant (0)
 deGenes <- decideTestsDGE(lrt,p=0.001)
-deGenes
-deGenes <-  rownames(lrt)[as.logical(deGenes)]
-plotSmear(lrt, de.tags=deGenes)
+table(deGenes) ## Count the number of under-, similarly- or up-regulated genes 
+deGenes.names <-  rownames(lrt)[as.logical(deGenes)]
+## Count the number of significant genes
+
+length(deGenes) ## Count the total number of genes
+length(deGenes.names) ## Count differentially expressed genes (up-regulated + down-regulated)
+length(deGenes.names) / length(deGenes) ##Proportion of differentially expressed genes
+
+plotSmear(lrt, de.tags=deGenes.names, col="grey")
 abline(h=c(-1,1),col=2)
+abline(h=0,col=1)
 
 ```
+
+### Interpretation
+
+The edgeR::plotSmear() method draws n equivalent of the "MA plot'" traditionally used for microarrays. 
+
+<font color="red">Mustafa: find some doc on the MA plot interpretation, for example <https://en.wikipedia.org/wiki/MA_plot></font>
+
+In short: 
+
+- each dot corresponds to one gene;
+- the abcissa indicates the average (A) level of expression for the two conditions; 
+- the ordinate indicates the log-ratio of expression. 
+
+    - Positive values indicate **up-regulation**, i.e. that the gene is expressed at a higher level in mutant (Snf2) than in wild-type
+    - Negative values indicate **down-regulation**: the gene is expressed at a lower level in the mutant than in the wild-type. 
+    - the red dots highlight the genes declared significant by edgeR
+
+
+Note: the smear plot shows strange results: a lot of genes are declared significantly differentially expressed (~3800, i.e. 60% of all genes). This is a huge number of genes, but the plot shows that many of them have a relatively small logFC, which indicates that the mean expression values are quite close between WT and Snf2. 
+
+<font color='red'>How to interpret this ?</font>
+- check if the genes declared significant with a small logFG correspond to genes with a very small variance. 
 
 # Estimating Dispersions
 
@@ -904,7 +951,66 @@ fData(cds)$disp_pooled
 #res = nbinomTest(cds, "A","B")
 ```
 
-## Estimation of variance
+# Differential analysis with DESeq2
+
+```{r}
+
+library(DESeq2)
+
+## Define a vector with the conditions per sample
+condition <- as.vector(sample.description$genotype)
+
+
+## Create a DESeqDataSet object from the count table + conditions
+deseq2.dds <- DESeqDataSetFromMatrix(
+  countData = counts, 
+  colData = DataFrame(condition),
+  ~ condition)
+
+## Indicate that second condition is the reference condition. 
+## If not done, the conditions are considered by alphabetical order, 
+## which may be misleading to interpret the log2 fold changes. 
+deseq2.dds$condition <- relevel(deseq2.dds$condition, ref="WT") 
+
+## Run the differential analysis
+deseq2.dds <- DESeq(deseq2.dds)      ## Differential analysis with negbin distrib
+deseq2.res <- results(deseq2.dds, independentFiltering=FALSE, pAdjustMethod = "BH")  ## Collect the result table
+
+summary(deseq2.res)
+
+alpha <- 0.05 ## First type error risk
+deseq2.result.table <- data.frame(
+  "gene.id" = row.names(deseq2.res),
+  "mean" = deseq2.res$baseMean,
+  "log2FC" = deseq2.res$log2FoldChange,
+  "pvalue" = deseq2.res$pvalue,
+  "padj" = deseq2.res$padj)
+deseq2.result.table$sig = -log10(deseq2.result.table$padj) ## Compute significance index
+deseq2.result.table$called.positive <- deseq2.result.table$padj < alpha
+table(deseq2.result.table$called.positive)
+
+## Draw a volcano plot
+plot(deseq2.result.table$log2FC,-log10(deseq2.result.table$padj), pch=".", panel.first=grid(), col="grey")
+
+## Mark significant genes in red
+marked.genes <- !is.na(deseq2.result.table$called.positive) & deseq2.result.table$called.positive
+points(deseq2.result.table[marked.genes,c("log2FC", "sig")], col="red", pch=".")
+
+```
+
+
+For next time (start inquiring on your site):
+
+- multiple testing corrections, including 
+
+    - nominal p-value
+    - False Positive Rate versus False Discovery Rate: understand the difference
+    - Bonferroni
+    - Benjamini-Hochberg
+
+Next time we discuss about the interpretation of the differentially expressed genes with DESeq2. 
+
+# Estimation of variance
 
 
 In DESeq, the inference relies on the estimation of the typical relationship between the data's viaraince (the data dispersion) and their mean. where is ** the dispersion** can understood as the square of the coefficient of Biological variation, so, if a gene's expression typically differs from replicate to replicate sample by 20%thence gene's dispersion is 0.2 power 2 = 0.04.
@@ -931,5 +1037,7 @@ plotDispEsts(cds)
 fData(cds)[c(1,3,4,5,6,7,8,9,10),]
 fData(cds)$disp_pooled
 ```
+
+
 
 ## References
