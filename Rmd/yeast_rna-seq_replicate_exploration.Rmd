@@ -297,7 +297,29 @@ The log2 transformation completely modifies the nature of the data, and complete
 Log2-transformed standardized counts may also be interesting for some clustering or classification purposes, because they will strongly reduce the dynamic range of the data, and the *log2 transformation has a normalizing effect* (this is a general effect) that may contribute to increase the suitedness of the data for some analysis methods (e.g. PCA, clustering, discriminant analysis, ...). We will investigate this very soon. 
 
 
+# The aim of Normalization 
+Is to remove systematic technical effects that occur in the data to ensure that technical bias has minimal impact on the results, and to equates the read cout distribution across samples.
+
+## The Trimmed mean of M-Values normalization method
+The total RNA dataset "Production",cannot be estimated directly, since we don't know the expression levels and true lengths of every gene.
+one simple yet robust way to estimate the ratio of RNA production uses a weighted trimmed mean of the log expression ratios (trimmed mean of M values (TMM)).
+for the sequencing data the gene-wise log-fold-changes as:
+
+$$M_{g}= \log_{2}\frac{Y_{gk}/N_{k}}{Y_{gk}/N_{k}}$$
+
+and absolute expression levels
+$$A_{g} = \frac {1}{2} \log_{2}(Y_{gk}/N_{k} \cdot Y_{gk}/N_{k`}) for  Y_{g} \neq 0 $$ 
+
+We can robustly summarize the observed M values, also we trim both the M values and the A values before taking the weighted average. precision (inverse of the Variance) weights are used to acount for the fact that log fold changes (effectively, a log relative risk) from genes with larger read counts have lower variance on the logarithm scale.
+
+## In practical side to compute TMM for each sample of the 48 replicate data sets.
+The Trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure is doubly trimmed, by log-fold-changes $M_{gk}-{r}$ (sample k relative to sample r for gene) and by absolute intensity $(A_{g})$, by defult we trim the $M_{g}$ values by 30% and the $A_{g}$ values by 5%, 
+
+?sage.test
+
 * * * * * * * * *
+
+
 
 ## Exercises
 
@@ -672,13 +694,53 @@ What do we observe ? What do we conclude (answer the original question of the mo
 
 It is important to Normalise RNA-Seq both within and between samples, edgeR implements the trimmed mean of M-Values (TMM) method.
 
+
 ```{r NORMALISATION by unsing edgR packege}
 calcNormFactors
 dgList<- calcNormFactors(dgList, method = "TMM")
-
+dgList$count
 attributes(dgList)
 # kable(dgList[1:1,1:1 ])
+sample.description$replicate
+tcc<-new("TCC", dgList$count, sample.description$replicate)
 
+tcc <- calcNormFactors(tcc, norm.method = "tmm", test.method = "edger", iteration = 3, FDR = 0.1, floorPDEG = 0.05)
+
+tcc<-estimateDE(tcc, test.method = "edger", FDR = 0.1)
+result <- getResult(tcc, sort = TRUE)
+result[1:5,]
+```
+
+Framework
+- $K_{gj}$ : observed count for gene $g$ in sample (library) $j$
+- $G$ : number of genes
+- $$D_{j} =\Sigma_{g=1}{G} K_{gj}$$: total number of reads for sample $j$
+- $N$ : number of samples in the experiment
+- $C_{j}$ : normalization factor associated with sample $j$
+
+### Total read count normalization
+<fontcolor = "blue"> Motivation </font> – scaling to library size as a form of normalization makes intuitive sense, given it is expected that sequencing a sample to half the depth will give, on average, half the number of reads mapping to each gene.
+<font color = "blue">Assumption </font>– read counts are proportional to expression level and sequencing depth.
+<font color = "bule">Method </font> – divide transcript read count by total number of reads and rescale the factors to counts per million
+$$$C_{j}= /frac{10}{D_{j}}$
+```{r Implemente- count per million normalization method }
+
+D <- apply(counts, 2 , sum)
+D <-sum(D)
+for ( j in 1:ncol(counts) ){
+  cpm <-(counts/D)*1000000
+}
+
+```
+### Trimmed Mean of M-values (TMM)
+- <font color="vlue">Motivation </font> total read count is strongly dependent on a few highly expressed transcripts
+- <font color ="blue">Assumption</font> – the majority of genes are not differentially expressed
+Method – a trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure
+is doubly trimmed, by log-fold-changes $M_{g}(j, r)$ (sample $j$ relative to sample r for gene $g$)
+$$M_{g}(j,r)=/log_{2}(K_{gj}/frac D_{j}) − log_{2}(K_{gr}/frac D_{r})$$
+and by absolute intensity $A_{g}(k,r)$
+$$A_{g}(j, r) = 1/frac 2 (log_{2}(K_{gj} /D_{j} ) + log_{2}(K_{gr} /frac D_{r}))$$
+```{rImplementation of Trimmed Mean of M-Values (TMM)}
 
 ```
 
@@ -955,7 +1017,6 @@ fData(cds)$disp_pooled
 
 ```{r}
 
-library(DESeq2)
 
 ## Define a vector with the conditions per sample
 condition <- as.vector(sample.description$genotype)
