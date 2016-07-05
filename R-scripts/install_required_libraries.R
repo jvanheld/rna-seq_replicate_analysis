@@ -19,4 +19,10 @@ if (!require(DESeq)){
   
 }
 
+if (!require(TCC)){
+  biocLite("TCC") ## install packege only if it cannot be loaded (Because not installed yet)
+  library(TCC)
+  
+}
+
 
