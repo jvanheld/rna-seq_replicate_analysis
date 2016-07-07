@@ -4,3 +4,5 @@ yeast_rna-seq_replicate_exploration.docx
 *.html
 *.pdf
 *.docx
+yeast_rna-seq_replicate_exploration_files
+*.png
