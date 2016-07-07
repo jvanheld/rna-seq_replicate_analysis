@@ -719,17 +719,34 @@ Framework
 - $C_{j}$ : normalization factor associated with sample $j$
 
 ### Total read count normalization
+
 <fontcolor = "blue"> Motivation </font> – scaling to library size as a form of normalization makes intuitive sense, given it is expected that sequencing a sample to half the depth will give, on average, half the number of reads mapping to each gene.
 <font color = "blue">Assumption </font>– read counts are proportional to expression level and sequencing depth.
 <font color = "bule">Method </font> – divide transcript read count by total number of reads and rescale the factors to counts per million
 $$$C_{j}= /frac{10}{D_{j}}$
-```{r Implemente- count per million normalization method }
 
+```{r Implementes - count per million library sum-based normalization method}
 D <- apply(counts, 2 , sum)
 D <-sum(D)
 for ( j in 1:ncol(counts) ){
   cpm <-(counts/D)*1000000
 }
+
+## Compute CPMS by deividing each column by its sum
+cpm <- data.frame(matrix(ncol=ncol(counts), nrow=nrow(counts))) ## Instantiate a CPM data frame with NA values
+row.names(cpm) <- row.names(counts)
+names(cpm) <- names(counts)
+View(cpm)
+
+## Compute the normalized counts (CPM) for each sample (column)
+for (j in 1:ncol(cpm) ){
+  cpm[,j] <- 1e+6 * counts[,j] / sum(counts[,j])
+}
+View(cpm)
+
+## Validation: check the sum of columns. Each column should sum up to exactly 1 million, by definition
+apply(cpm, 2, sum)
+## OK, this works !
 
 ```
 ### Trimmed Mean of M-values (TMM)
@@ -740,6 +757,8 @@ is doubly trimmed, by log-fold-changes $M_{g}(j, r)$ (sample $j$ relative to sam
 $$M_{g}(j,r)=/log_{2}(K_{gj}/frac D_{j}) − log_{2}(K_{gr}/frac D_{r})$$
 and by absolute intensity $A_{g}(k,r)$
 $$A_{g}(j, r) = 1/frac 2 (log_{2}(K_{gj} /D_{j} ) + log_{2}(K_{gr} /frac D_{r}))$$
+
+
 ```{rImplementation of Trimmed Mean of M-Values (TMM)}
 
 ```
