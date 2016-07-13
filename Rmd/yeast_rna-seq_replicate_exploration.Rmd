@@ -324,15 +324,90 @@ Log2-transformed standardized counts may also be interesting for some clustering
 # The aim of Normalization 
 Is to remove systematic technical effects that occur in the data to ensure that technical bias has minimal impact on the results, and to equates the read cout distribution across samples.
 
-## The Trimmed mean of M-Values normalization method
-The total RNA dataset "Production",cannot be estimated directly, since we don't know the expression levels and true lengths of every gene.
-one simple yet robust way to estimate the ratio of RNA production uses a weighted trimmed mean of the log expression ratios (trimmed mean of M values (TMM)).
-for the sequencing data the gene-wise log-fold-changes as:
+## The Trimmed mean of M-Values (TMM) normalization method
 
-$$M_{g}= \log_{2}\frac{Y_{gk}/N_{k}}{Y_{gk}/N_{k}}$$
 
-and absolute expression levels
+Robinson and Oshlack [@Robinson:2010:pmid20196867] modeled the relationship between  RNA quantities produced by a sample and RNA-seq counts.
+
+$$E[Y_{gk}] = \frac{\mu_{gk} \cdot L_g}{S_k} \cdot N_k$$
+
+$$N_k = \sum_{g=1}^{G} XXX$$
+
+$$S_k = \sum_{g=1}^{G} YYY$$
+
+Counts:
+
+- $Y_{gk}$ = observed read counts for gene $g$ in sample $k$.
+- $N_k$ = total number of reads (all genes together) for sample $k$
+
+Actual RNA quantities per sample:
+
+- $E[Y_{gk}]$ = expected read counts for gene $g$ in sample $k$.
+- $\mu_{gk}$ = true (but unknown) number of transcripts for gene $g$ in sample $k$.
+- $L_g$ = length of the $g^{th}$ gene
+- $S_k$ = total RNA (all genes together) for sample $k$.
+
+Quote from Robinson and Oshlack (2010): "The total RNA dataset production, $S_k$ cannot be estimated directly, since we don't know the expression levels and true lengths of every gene." 
+
+Actually we know (approximately) the length o each gene as far as it has been correctly annotated in the genome, but we have no idea about the actual number of RNA molecules produced by each gene ($g$) in a given sample ($k$). 
+
+"One simple yet robust way to estimate the ratio of RNA production uses a weighted trimmed mean of the log expression ratios (trimmed mean of M values (TMM))."
+
+Computation of the $M$ and $A$ values
+
+The $M$ value is the log2-ratio of relative counts for gene $g$ between two samples $k$ and $k'$. 
+
+$$M_{g}= \log_{2}\frac{Y_{gk}/N_{k}}{Y_{gk'}/N_{k'}}$$
+
+$k'$ is the index of the "reference sample". Robinson and Oshlack indicate that for multi-sample analyses, one sample should be selected as reference, and the TMM should be computed for all the other samples, based on this reference. However the authors do not give clues about the way to choose "the" reference sample. In our case, it would seem logial to choose a WT ("normal" yeast strain) as reference, but we still have to choose one among the 48 WT samples. One possiblity is to take a sample that has an average library sum, in order to be in the middle range. 
+
+```{r Robinson-Oshlack M value computation}
+
+## The raw Y are problematic in the formula, but we can use Y + 1 instead (I think this is what Robinson and Oshlack do, but we have to check)
+Y <- counts + 1
+
+## Create an empty datagrame to store M values
+M <- data.frame(matrix(ncol=ncol(Y), nrow=nrow(Y)))
+names(M) <- names(Y)
+row.names(M) <- row.names(Y)
+
+## Define the reference sample by selecting the column (sample) at the median 
+## place of the sum-ranked columns.
+sorted.wt.libsum <- sort(apply(counts.wt, 2, sum))
+sorted.wt.names <- names(sorted.wt.libsum)
+ref.sample <- sorted.wt.names[length(sorted.wt.libsum)%/%2]
+k.prime <- which(names(Y) == ref.sample)
+
+## For the reference sample, use the raw Y
+M[, k.prime] <- Y[,k.prime]
+
+## Compute M values
+# The Y  variable of Robinson-Oshlack formula corresponds to our "Y" data frame
+for (k in 1:ncol(Y)) {
+  if (k != k.prime) {
+    M[, k] <- log2( (Y[,k]/ sum(Y[,k]))/(Y[,ref.sample] / sum(Y[,ref.sample])))
+  }
+}
+View(M)
+
+## Exercises for Mustafa
+## - compute A value with the same kind of implementation as for M values here
+## - compute the trimmed mean of M values (TMM)
+##        1. trimming: discard the 5% lower and 3% upper values
+##        2. compute the mean of the remaining values
+## - compute the median of M values
+## -draw a plot that compares the TMM to the median of M values
+```
+
+
+The Absolute expression level ($A$) of gene $g$ in samples $k$ and $k'$ is defined as follows. 
+
 $$A_{g} = \frac {1}{2} \log_{2}(Y_{gk}/N_{k} \cdot Y_{gk}/N_{k`}) for  Y_{g} \neq 0 $$ 
+
+
+Interpretation: 
+
+- the $M$ value indicates the difference of expression between samples $k$ and $k'$. A positive sign (resp. negative), indicates  that gene $g$ is expressed at a higher (resp. lower) level in sample $k$ than sample $k'$.
 
 We can robustly summarize the observed M values, also we trim both the M values and the A values before taking the weighted average. precision (inverse of the Variance) weights are used to acount for the fact that log fold changes (effectively, a log relative risk) from genes with larger read counts have lower variance on the logarithm scale.
 
@@ -340,6 +415,52 @@ We can robustly summarize the observed M values, also we trim both the M values 
 The Trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure is doubly trimmed, by log-fold-changes $M_{gk}-{r}$ (sample k relative to sample r for gene) and by absolute intensity $(A_{g})$, by defult we trim the $M_{g}$ values by 30% and the $A_{g}$ values by 5%, 
 
 ?sage.test
+
+
+
+### Trimmed Mean of M-values (TMM)
+- <font color="vlue">Motivation </font> total read count is strongly dependent on a few highly expressed transcripts
+- <font color ="blue">Assumption</font> – the majority of genes are not differentially expressed
+Method – a trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure
+is doubly trimmed, by log-fold-changes $M_{g}(j, r)$ (sample $j$ relative to sample r for gene $g$)
+$$M_{g}(j,r)=/log_{2}(K_{gj}/frac D_{j}) − log_{2}(K_{gr}/frac D_{r})$$
+and by absolute intensity $A_{g}(k,r)$
+$$A_{g}(j, r) = 1/frac 2 (log_{2}(K_{gj} /D_{j} ) + log_{2}(K_{gr} /frac D_{r}))$$
+
+
+```{rImplementation of Trimmed Mean of M-Values (TMM)}
+# k      <- data.frame(matrix(ncol=ncol(counts.wt), nrow=nrow(counts.wt)))
+# row.names(k)<-row.names(counts.wt)
+# names(k)<-names(counts.wt)
+# View(counts.wt[1,2])
+# View(k)
+# k.prim  <- data.frame(matrix(ncol=ncol(counts.snf2), nrow=nrow(counts.snf2)))
+# row.names(k.prim)<-row.names(counts.snf2)
+# names(k.prim)<-names(counts.snf2)
+# View(k.prim)
+# View(k.prim)
+
+libsum.k.wt.per.sample <- apply(counts.wt, 2,sum)
+libsum.k.wt.all <- sum(libsum.k.wt.per.sample)
+libsum.k.snf2.per.sample <- apply(counts.snf2, 2,sum)
+libsum.k.snf2.all <- sum(libsum.k.snf2.per.sample)
+
+for(j in 1:ncol(counts)) {
+      # for (j in 1:ncol(counts.snf2)){
+     for(i in 1:nrow(counts)){
+            Mg[i] <-log2((counts.wt[i,j]/libsum.k.wt.per.sample[j])/(counts.snf2[i,j]/libsum.k.snf2.per.sample[j]))
+            Ag[i] <- 1/2*(log2((counts.wt[i,j]/libsum.k.wt.all[j])*(counts.snf2[i,j]/libsum.k.snf2.all[j])))
+     # }
+   }
+}
+
+
+Mg <-function(counts) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf2.all))
+Ag <- function (counts) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsum.k.snf2.all)))
+
+Mg <-apply(as.matrix(counts) ,2, Mg)
+Ag <- apply(counts, 2, Ag)        
+```
 
 * * * * * * * * *
 
@@ -812,49 +933,8 @@ apply(cpm, 2, sum)
 ## OK, this works !
 
 ```
-### Trimmed Mean of M-values (TMM)
-- <font color="vlue">Motivation </font> total read count is strongly dependent on a few highly expressed transcripts
-- <font color ="blue">Assumption</font> – the majority of genes are not differentially expressed
-Method – a trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure
-is doubly trimmed, by log-fold-changes $M_{g}(j, r)$ (sample $j$ relative to sample r for gene $g$)
-$$M_{g}(j,r)=/log_{2}(K_{gj}/frac D_{j}) − log_{2}(K_{gr}/frac D_{r})$$
-and by absolute intensity $A_{g}(k,r)$
-$$A_{g}(j, r) = 1/frac 2 (log_{2}(K_{gj} /D_{j} ) + log_{2}(K_{gr} /frac D_{r}))$$
 
 
-```{rImplementation of Trimmed Mean of M-Values (TMM)}
-# k      <- data.frame(matrix(ncol=ncol(counts.wt), nrow=nrow(counts.wt)))
-# row.names(k)<-row.names(counts.wt)
-# names(k)<-names(counts.wt)
-# View(counts.wt[1,2])
-# View(k)
-# k.prim  <- data.frame(matrix(ncol=ncol(counts.snf2), nrow=nrow(counts.snf2)))
-# row.names(k.prim)<-row.names(counts.snf2)
-# names(k.prim)<-names(counts.snf2)
-# View(k.prim)
-# View(k.prim)
-
-libsum.k.wt.per.sample <- apply(counts.wt, 2,sum)
-libsum.k.wt.all <- sum(libsum.k.wt.per.sample)
-libsum.k.snf2.per.sample <- apply(counts.snf2, 2,sum)
-libsum.k.snf2.all <- sum(libsum.k.snf2.per.sample)
-
-for(j in 1:ncol(counts)) {
-      # for (j in 1:ncol(counts.snf2)){
-     for(i in 1:nrow(counts)){
-            Mg[i] <-log2((counts.wt[i,j]/libsum.k.wt.per.sample[j])/(counts.snf2[i,j]/libsum.k.snf2.per.sample[j]))
-            Ag[i] <- 1/2*(log2((counts.wt[i,j]/libsum.k.wt.all[j])*(counts.snf2[i,j]/libsum.k.snf2.all[j])))
-     # }
-   }
-}
-
-
-Mg <-function(counts) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf2.all))
-Ag <- function (counts) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsum.k.snf2.all)))
-
-Mg <-apply(as.matrix(counts) ,2, Mg)
-Ag <- apply(counts, 2, Ag)        
-```
 
 ## Multidimensional scaling
 
