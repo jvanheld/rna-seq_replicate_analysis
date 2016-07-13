@@ -798,7 +798,9 @@ Mg <-function(counts) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf
 Ag <- function (counts) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsum.k.snf2.all)))
 
 Mg <-apply(as.matrix(counts) ,2, Mg)
-Ag <- apply(counts, 2, Ag)        
+Ag <- apply(counts, 2, Ag)   
+plot(Mg,Ag)
+
 ```
 
 ## Multidimensional scaling
