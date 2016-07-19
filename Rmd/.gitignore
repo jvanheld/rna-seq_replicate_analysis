@@ -6,4 +6,8 @@ yeast_rna-seq_replicate_exploration.docx
 *.docx
 yeast_rna-seq_replicate_exploration_files
 *.png
+<<<<<<< HEAD
 yeast_rna-seq_replicate_exploration.Rmd
+=======
+doc_and_refs_rna-seq_analysis.html
+>>>>>>> 6cb5f4affaf3aa0b2ab33f1fc46d6981e39b6bb4

@@ -398,8 +398,8 @@ row.names(A)<- row.names(y)
 
 # For the reference smaple, raw Y
 A[,k.prime] <- y[,k.prime]
-## comute A Values
-k<-1
+## Compute A Values
+k <-1
 for (k in 1:ncol(y)){
   if(k != k.prime){
     A[ ,k] <- 1/2*log2(y[,k]/ sum(y[,k]) * y[,ref.sample]/sum(y[,ref.sample]))
@@ -408,6 +408,8 @@ for (k in 1:ncol(y)){
 }
 
 dim(M)
+dim(A)
+
 j <- 1
 trimming.percent <- c("lower"=3, "upper"=5)
 trimming.number <- round(nrow(M) * trimming.percent / 100)
@@ -419,23 +421,19 @@ for (j in 1:ncol(M)) {
   M.current.sample.trimmed <- M.current.sample.sorted[first.index.to.keep:last.index.to.keep]
   length(M.current.sample.sorted)
   length(M.current.sample.trimmed)
+  
   TMM[j] <- mean(M.current.sample.trimmed)
 
  TMM_median[j]<- median(M.current.sample.trimmed)
 }
 
   
- 
-plot(TMM, TMM_median,
-     main="Implemented The Trimmed Mean of M-Values Normalisation Method",
-     col="#006688", las=1, cex.axis=0.7,
-     xlab="TMM",
-     ylab="Median of M Values"
-    )
-grid(col="blue")
-abline(col="brown", a=0, b=1) ## Draw a diagonal (slope=1, intercept=0)
-abline(h=0, col="black") # Draw an horizontal line to mark X axis
-abline(v=0, col="black") # Draw a vertical line to mark Y axis
+par(mfrow=c(1,2))
+hist(TMM, breaks=100, col="cyan")
+hist(TMM_median, breaks=100, col="yellow")
+par(mfrow=c(1,1))
+
+
 
 ## Discarding 5% lower and 3% upper value 
   
@@ -465,7 +463,6 @@ We can robustly summarize the observed M values, also we trim both the M values 
 ## In practical side to compute TMM for each sample of the 48 replicate data sets.
 The Trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure is doubly trimmed, by log-fold-changes $M_{gk}-{r}$ (sample k relative to sample r for gene) and by absolute intensity $(A_{g})$, by defult we trim the $M_{g}$ values by 30% and the $A_{g}$ values by 5%, 
 
-?sage.test
 
 
 
@@ -478,40 +475,24 @@ $$M_{g}(j,r)=/log_{2}(K_{gj}/frac D_{j}) − log_{2}(K_{gr}/frac D_{r})$$
 and by absolute intensity $A_{g}(k,r)$
 $$A_{g}(j, r) = 1/frac 2 (log_{2}(K_{gj} /D_{j} ) + log_{2}(K_{gr} /frac D_{r}))$$
 
+_________________________________
+# The rlog Trasformation
 
-```{rImplementation of Trimmed Mean of M-Values (TMM) 1}
-# k      <- data.frame(matrix(ncol=ncol(counts.wt), nrow=nrow(counts.wt)))
-# row.names(k)<-row.names(counts.wt)
-# names(k)<-names(counts.wt)
-# View(counts.wt[1,2])
-# View(k)
-# k.prim  <- data.frame(matrix(ncol=ncol(counts.snf2), nrow=nrow(counts.snf2)))
-# row.names(k.prim)<-row.names(counts.snf2)
-# names(k.prim)<-names(counts.snf2)
-# View(k.prim)
-# View(k.prim)
+when we need the amount of variance is approximately the same across diffrent mean values,in stady case for multidimentional dta for example clustring and principal components analysis(PCA), this considered common statistical methods for exploratory analysis of multidimentional data. these suppose the data genarally has the same range of variance at diffrent ranges of the mean values this data so-called *HOMOSKEDASTIC*.
 
-libsum.k.wt.per.sample <- apply(counts.wt, 2,sum)
-libsum.k.wt.all <- sum(libsum.k.wt.per.sample)
-libsum.k.snf2.per.sample <- apply(counts.snf2, 2,sum)
-libsum.k.snf2.all <- sum(libsum.k.snf2.per.sample)
+```{r}
+library(DESeq2)
+nrow(counts)
+colData(counts)
+dds<- counts[rowSums(counts)> 1,]
 
-# for(j in 1:ncol(counts)) {
-#       # for (j in 1:ncol(counts.snf2)){
-#      for(i in 1:nrow(counts)){
-#             Mg[i] <-log2((counts.wt[i,j]/libsum.k.wt.per.sample[j])/(counts.snf2[i,j]/libsum.k.snf2.per.sample[j]))
-#             Ag[i] <- 1/2*(log2((counts.wt[i,j]/libsum.k.wt.all[j])*(counts.snf2[i,j]/libsum.k.snf2.all[j])))
-#      # }
-#    }
-# }
+nrow(dds)
+dds<-t(dds)
 
-
-Mg <-function(counts) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf2.all))
-Ag <- function (counts) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsum.k.snf2.all)))
-
-Mg <-apply(as.matrix(counts) ,2, Mg)
-Ag <- apply(counts, 2, Ag)        
+rlcounts<-rlog(t(dds), blind=FALSE)
+estimateSizeFactors()
 ```
+
 
 * * * * * * * * *
 
