@@ -32,12 +32,13 @@ knitr::opts_chunk$set(echo=FALSE, eval=TRUE, cache=FALSE, message=FALSE, warning
 
 ```{r execution parameters}
 
+message("specifying parameters")
+
 ## The variable dir.base should be adapted to indicate the path of the
 ## rna-seq_replicate_analysis clone on your computer. 
 ## All other directories and files are defined relative to this base directory. 
 dir.base <- "~/rna-seq_replicate_analysis"
 setwd(dir.base)
-
 
 
 ## Load required libraries
@@ -48,6 +49,11 @@ dir.results <- file.path(dir.base, "results")
 dir.create(dir.results, showWarnings = FALSE, recursive = TRUE)
 dir.figures <- file.path(dir.base, "figures")
 dir.create(dir.figures, showWarnings = FALSE, recursive = TRUE)
+
+
+
+## Display and analysis parameters
+epsilon <- 1/4
 
 ```
 
@@ -89,6 +95,7 @@ Fastq files: <http://www.ebi.ac.uk/ena/data/view/ERP004763>
 We will now load the two read count tables (WT and Snf2 mutants respectively).
 
 ```{r data loading}
+message("Loading data")
 
 ## Load two tables containing the counts per gene for the wild-type (WT) and for the mutant (Snf2) strains, respectively. 
 dir.counts <- file.path(dir.base, "data/counts_per_gene")
@@ -100,6 +107,9 @@ names(counts.snf2) <- paste(sep=".", "SNF2", 1:ncol(counts.snf2))
 
 sample.groups <-c("WT", "Snf2")
 
+message("Data loaded")
+
+
 ```
 
 ## Data exploration
@@ -107,6 +117,7 @@ sample.groups <-c("WT", "Snf2")
 We will first check the dimension of the two tables.
 
 ```{r}
+message("Merging WT and SNF2 counts into a single table.")
 
 ## count the number of genes (rows) in the two data tables.
 dim(counts.wt)
@@ -179,24 +190,34 @@ We can immediately draw some observations from these summaries.
 We would like to count the number of undetected genes per sample, i.e. genes having zero counts. 
 
 ```{r undetected_genes}
+
+
 ## Count the number of undetected genes for each sample
+message("Counting undetected genes per sample.")
 undetected.genes.per.sample <- apply(counts == 0, 2, sum)
 
 ## Count the number of samples where each gene has not been detected
+message("Counting undetected samples per gene.")
 undetected.samples.per.gene <- apply(counts == 0, 1, sum)
-hist(undetected.samples.per.gene, breaks=0:ncol(counts), col="grey", ylim=c(0,300),
+hist(undetected.samples.per.gene, 
+     breaks=0:ncol(counts), col="grey", ylim=c(0,300),
      main="Samples with zero counts per gene",
      xlab="Number of samples with 0 counts",
      ylab="Number of genes (truncated axis)"
   )
-for(j in 1:ncol(counts)){
-ggplot(counts, aes(x = counts[,j])) + geom_histogram(fill = "#525252", binwidth = 2000)
+
+## JvH: THIS IS NOT WORKING: THE LOOP IS USED, BUT THE PLOTS ARE NOT GENERATED. TO CHECK LATER
+for (j in 1:ncol(counts)){
+  message("PROBLEM: no ggplot for sample nb ", j)
+   # ggplot(counts, aes(x = counts[,j])) + geom_histogram(fill = "#525252", binwidth = 2000)
 }
 
 ```
 
 
-```{r WT vs Snf2 undetected}
+```{r detected samples per gene and group}
+
+message("Comparing the number of samples per gene between groups (WT vs SNF2)")
 
 ## Compare the number of samples where each gene was detected in the two groups
 detected.samples.per.gene.wt <- apply(counts.wt >= 1, 1, sum)
@@ -211,6 +232,7 @@ abline(a=0, b=1, col="darkgreen")
 ## Highlight the Snf2 gene on the plot
 points(detected.samples.per.gene.wt["yor290c"], 
        detected.samples.per.gene.snf2["yor290c"], col="red")
+
 ```
 
 
@@ -223,7 +245,7 @@ RNA-seq count data are characterized by a very wide range of values, with small 
 However, we first must treate a problem: since many genes have 0 counts, the logarithmic transformation would give -Infinite, which creates problems for both computation and display. To circumvent this, we arbitrarily convert the zero counts in a small epsilon value (smaller than 1, so we can distinguish the genes with 1 counts from genes with 0 counts). we will choose an epsilon of 0.01.  
 
 ```{r log_counts_computation}
-epsilon <- 1/4
+message("Adding epsilon and computing log2-transformed counts")
 
 ## Compute log2-transformed counts
 ## sum(counts == 0) ## Count the number of zero values
@@ -240,13 +262,13 @@ counts.log2 <- log2(counts.epsilon)
 The boxplots below summarizes the distribution of log2-transformed counts per genes for each sample. 
 
 ```{r boxplots of log2-transformed count, fig.height=12, fig.width=6, fig.cap="Box plot of the log2-transformed counts per sample. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
-
+message("Genering boxplots")
 for (genotype in c("WT", "SNF2")) {
-  boxplot(counts.log2[,sample.description$genotype == genotype], 
-          horizontal = TRUE, las=2, col=color.code[genotype],
-          main=genotype,
-          xlab=paste(sep="", "log2(counts), with epsilon=", epsilon))
-  
+  boxplot(
+    counts.log2[,sample.description$genotype == genotype], 
+    horizontal = TRUE, las=1, col=color.code[genotype],
+    main=genotype, cex.axis=0.6, cex.label=0.8,
+    xlab=paste(sep="", "log2(counts), with epsilon=", epsilon))
 }
 
 ```
@@ -288,9 +310,6 @@ To circumvent this, one possibility is to use a more robust scaling factor for e
 $$x'_{i,j} = \frac{x_{i,j}}{\text{median}(x_{.j})} \cdot \text{median}(x_{i,j})$$
 
 
-
-
-
 ### When should we use / not use normalized counts?
 
 Normalized log2-transformed counts are very  convenient for display purposes (e.g. to compare the read density between samples or between conditions). 
@@ -305,15 +324,141 @@ Log2-transformed standardized counts may also be interesting for some clustering
 # The aim of Normalization 
 Is to remove systematic technical effects that occur in the data to ensure that technical bias has minimal impact on the results, and to equates the read cout distribution across samples.
 
-## The Trimmed mean of M-Values normalization method
-The total RNA dataset "Production",cannot be estimated directly, since we don't know the expression levels and true lengths of every gene.
-one simple yet robust way to estimate the ratio of RNA production uses a weighted trimmed mean of the log expression ratios (trimmed mean of M values (TMM)).
-for the sequencing data the gene-wise log-fold-changes as:
+## The Trimmed mean of M-Values (TMM) normalization method
 
-$$M_{g}= \log_{2}\frac{Y_{gk}/N_{k}}{Y_{gk}/N_{k}}$$
 
-and absolute expression levels
+Robinson and Oshlack [@Robinson:2010:pmid20196867] modeled the relationship between  RNA quantities produced by a sample and RNA-seq counts.
+
+$$E[Y_{gk}] = \frac{\mu_{gk} \cdot L_g}{S_k} \cdot N_k$$
+
+$$N_k = \sum_{g=1}^{G} L_{g}$$
+
+$$S_k = \sum_{g=1}^{G} \mu_{gk} L_{g}$$
+
+Counts:
+
+- $Y_{gk}$ = observed read counts for gene $g$ in sample $k$.
+- $N_k$ = total number of reads (all genes together) for sample $k$
+
+Actual RNA quantities per sample:
+
+- $E[Y_{gk}]$ = expected read counts for gene $g$ in sample $k$.
+- $\mu_{gk}$ = true (but unknown) number of transcripts for gene $g$ in sample $k$.
+- $L_g$ = length of the $g^{th}$ gene
+- $S_k$ = total RNA (all genes together) for sample $k$.
+
+Quote from Robinson and Oshlack (2010): "The total RNA dataset production, $S_k$ cannot be estimated directly, since we don't know the expression levels and true lengths of every gene." 
+
+Actually we know (approximately) the length o each gene as far as it has been correctly annotated in the genome, but we have no idea about the actual number of RNA molecules produced by each gene ($g$) in a given sample ($k$). 
+
+"One simple yet robust way to estimate the ratio of RNA production uses a weighted trimmed mean of the log expression ratios (trimmed mean of M values (TMM))."
+
+Computation of the $M$ and $A$ values
+
+The $M$ value is the log2-ratio of relative counts for gene $g$ between two samples $k$ and $k'$. 
+
+$$M_{g}= \log_{2}\frac{Y_{gk}/N_{k}}{Y_{gk'}/N_{k'}}$$
+
+$k'$ is the index of the "reference sample". Robinson and Oshlack indicate that for multi-sample analyses, one sample should be selected as reference, and the TMM should be computed for all the other samples, based on this reference. However the authors do not give clues about the way to choose "the" reference sample. In our case, it would seem logial to choose a WT ("normal" yeast strain) as reference, but we still have to choose one among the 48 WT samples. One possiblity is to take a sample that has an average library sum, in order to be in the middle range. 
+
+```{r Robinson-Oshlack M value computation}
+
+## The raw Y are problematic in the formula, but we can use Y + 1 instead (I think this is what Robinson and Oshlack do, but we have to check)
+Y <- counts + 1
+
+## Create an empty datagrame to store M values
+M <- data.frame(matrix(ncol=ncol(Y), nrow=nrow(Y)))
+names(M) <- names(Y)
+row.names(M) <- row.names(Y)
+
+## Define the reference sample by selecting the column (sample) at the median 
+## place of the sum-ranked columns.
+sorted.wt.libsum <- sort(apply(counts.wt, 2, sum))
+sorted.wt.names <- names(sorted.wt.libsum)
+ref.sample <- sorted.wt.names[length(sorted.wt.libsum)%/%2]
+k.prime <- which(names(Y) == ref.sample)
+
+## For the reference sample, use the raw Y
+M[, k.prime] <- Y[,k.prime]
+
+## Compute M values
+# The Y  variable of Robinson-Oshlack formula corresponds to our "Y" data frame
+for (k in 1:ncol(Y)) {
+  if (k != k.prime) {
+    M[, k] <- log2( (Y[,k]/ sum(Y[,k]))/(Y[,ref.sample] / sum(Y[,ref.sample])))
+  }
+}
+View(M)
+
+## Create an datagram to store A Values 
+y <-counts+1
+A <-data.frame(matrix(ncol=ncol(y), nrow=nrow(y)))
+names(A)<- names(y)
+row.names(A)<- row.names(y)
+
+# For the reference smaple, raw Y
+A[,k.prime] <- y[,k.prime]
+## comute A Values
+k<-1
+for (k in 1:ncol(y)){
+  if(k != k.prime){
+    A[ ,k] <- 1/2*log2(y[,k]/ sum(y[,k]) * y[,ref.sample]/sum(y[,ref.sample]))
+
+      }
+}
+
+dim(M)
+j <- 1
+trimming.percent <- c("lower"=3, "upper"=5)
+trimming.number <- round(nrow(M) * trimming.percent / 100)
+                  
+for (j in 1:ncol(M)) {
+  M.current.sample.sorted <- sort(unlist(M[,j]), decreasing = FALSE)   
+  first.index.to.keep <- (trimming.number["lower"] +1)
+  last.index.to.keep <- (length(M.current.sample.sorted) - trimming.number["upper"])
+  M.current.sample.trimmed <- M.current.sample.sorted[first.index.to.keep:last.index.to.keep]
+  length(M.current.sample.sorted)
+  length(M.current.sample.trimmed)
+  TMM[j] <- mean(M.current.sample.trimmed)
+
+ TMM_median[j]<- median(M.current.sample.trimmed)
+}
+
+  
+ 
+plot(TMM, TMM_median,
+     main="Implemented The Trimmed Mean of M-Values Normalisation Method",
+     col="#006688", las=1, cex.axis=0.7,
+     xlab="TMM",
+     ylab="Median of M Values"
+    )
+grid(col="blue")
+abline(col="brown", a=0, b=1) ## Draw a diagonal (slope=1, intercept=0)
+abline(h=0, col="black") # Draw an horizontal line to mark X axis
+abline(v=0, col="black") # Draw a vertical line to mark Y axis
+
+## Discarding 5% lower and 3% upper value 
+  
+  
+
+## Exercises for Mustafa
+## - compute A value with the same kind of implementation as for M values here
+## - compute the trimmed mean of M values (TMM)
+##        1. trimming: discard the 5% lower and 3% upper values
+##        2. compute the mean of the remaining values
+## - compute the median of M values
+## -draw a plot that compares the TMM to the median of M values
+```
+
+
+The Absolute expression level ($A$) of gene $g$ in samples $k$ and $k'$ is defined as follows. 
+
 $$A_{g} = \frac {1}{2} \log_{2}(Y_{gk}/N_{k} \cdot Y_{gk}/N_{k`}) for  Y_{g} \neq 0 $$ 
+
+
+Interpretation: 
+
+- the $M$ value indicates the difference of expression between samples $k$ and $k'$. A positive sign (resp. negative), indicates  that gene $g$ is expressed at a higher (resp. lower) level in sample $k$ than sample $k'$.
 
 We can robustly summarize the observed M values, also we trim both the M values and the A values before taking the weighted average. precision (inverse of the Variance) weights are used to acount for the fact that log fold changes (effectively, a log relative risk) from genes with larger read counts have lower variance on the logarithm scale.
 
@@ -321,6 +466,52 @@ We can robustly summarize the observed M values, also we trim both the M values 
 The Trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure is doubly trimmed, by log-fold-changes $M_{gk}-{r}$ (sample k relative to sample r for gene) and by absolute intensity $(A_{g})$, by defult we trim the $M_{g}$ values by 30% and the $A_{g}$ values by 5%, 
 
 ?sage.test
+
+
+
+### Trimmed Mean of M-values (TMM)
+- <font color="vlue">Motivation </font> total read count is strongly dependent on a few highly expressed transcripts
+- <font color ="blue">Assumption</font> – the majority of genes are not differentially expressed
+Method – a trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure
+is doubly trimmed, by log-fold-changes $M_{g}(j, r)$ (sample $j$ relative to sample r for gene $g$)
+$$M_{g}(j,r)=/log_{2}(K_{gj}/frac D_{j}) − log_{2}(K_{gr}/frac D_{r})$$
+and by absolute intensity $A_{g}(k,r)$
+$$A_{g}(j, r) = 1/frac 2 (log_{2}(K_{gj} /D_{j} ) + log_{2}(K_{gr} /frac D_{r}))$$
+
+
+```{rImplementation of Trimmed Mean of M-Values (TMM) 1}
+# k      <- data.frame(matrix(ncol=ncol(counts.wt), nrow=nrow(counts.wt)))
+# row.names(k)<-row.names(counts.wt)
+# names(k)<-names(counts.wt)
+# View(counts.wt[1,2])
+# View(k)
+# k.prim  <- data.frame(matrix(ncol=ncol(counts.snf2), nrow=nrow(counts.snf2)))
+# row.names(k.prim)<-row.names(counts.snf2)
+# names(k.prim)<-names(counts.snf2)
+# View(k.prim)
+# View(k.prim)
+
+libsum.k.wt.per.sample <- apply(counts.wt, 2,sum)
+libsum.k.wt.all <- sum(libsum.k.wt.per.sample)
+libsum.k.snf2.per.sample <- apply(counts.snf2, 2,sum)
+libsum.k.snf2.all <- sum(libsum.k.snf2.per.sample)
+
+# for(j in 1:ncol(counts)) {
+#       # for (j in 1:ncol(counts.snf2)){
+#      for(i in 1:nrow(counts)){
+#             Mg[i] <-log2((counts.wt[i,j]/libsum.k.wt.per.sample[j])/(counts.snf2[i,j]/libsum.k.snf2.per.sample[j]))
+#             Ag[i] <- 1/2*(log2((counts.wt[i,j]/libsum.k.wt.all[j])*(counts.snf2[i,j]/libsum.k.snf2.all[j])))
+#      # }
+#    }
+# }
+
+
+Mg <-function(counts) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf2.all))
+Ag <- function (counts) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsum.k.snf2.all)))
+
+Mg <-apply(as.matrix(counts) ,2, Mg)
+Ag <- apply(counts, 2, Ag)        
+```
 
 * * * * * * * * *
 
@@ -344,8 +535,8 @@ The result table must contain one row per sample (column of the original count t
 Hereafter we only display the results for the 10 first samples (columns of the table), for the sake of readibility of the report. However we also calculate the same statistics for each one of the samples (the full table of statistics will be exported in a tab-separated value file).
 
 
-```{r summary ststistics per sample NEW NEW}
-
+```{r summary ststistics per sample}
+message("Computing summary statistics per sample")
 
 ## Prepare a data frame to store the statistics per sample
 
@@ -380,6 +571,35 @@ knitr::kable(t(stats.per.sample[1:5,]))
 
 ```
 
+### Library size
+
+We will measure the library size for each sample of each genotye, and display the result as boxplot. 
+
+```{r sequencing depth per sample}
+
+# ## counts
+# hist(log10(apply(counts, 2, sum)), breaks=50,
+#      main="Sequencing depth per sample", col="#DDEEFF", las=1, 
+#      xlab="log10(sum of counts per sample)", ylab="Number of samples", xlim=c(6.7,7.2))
+# print(counts[1000:1010,])
+# dim(counts) ## Check the dimensions of the count table. 
+## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
+
+## boxplot showing the "library size", also called "sequencing depth" per sample
+message("Genering barplots")
+for (genotype in c("WT", "SNF2")) {
+  barplot(apply(counts[,sample.description$genotype == genotype], 2, sum), 
+          horiz = TRUE,
+          las=1, cex.names = 0.6,
+          col=color.code[genotype],
+          main=genotype,
+          xlab="Sum of counts (libsum)")
+}
+
+```
+
+On the barplot, we notice that some libraries have a lower sequencing depth ("libsum") than other ones. For example, sample SNF2.39 totals `r sum(counts$SNF2.39)` reads whereas SNF2.48 only sums up to `r sum(counts$SNF2.48)`. These two sequencing depths thus differ by a factor two. For this reason, if we want to compute gene-wise statistics, we will need to normalize the counts in order to take into account these sample-wise differences in sequencing depth. 
+
 ### Exercise 2. Sample-wise standardization
 
 In this exercise we apply a simplistic method to standardize samples. Note that specialized packages like edgeR and DESeq2 have much more elaborate (and relevant) normalization procedures. This simplistic normalization is only for didactic purposes. 
@@ -387,14 +607,15 @@ In this exercise we apply a simplistic method to standardize samples. Note that 
 a. Standardize the count table by scaling all values accoding to the median per sample (do it for the counts and for the log2-transformed counts).
 b. Compare the scaling factors that would be applied with libsum and median-based standardization, respectively (draw a plot comparing the scaling factors for each sample). 
 
-```{r statistics per Sample}
+```{r median-based sample normalization}
+message("Median-based normalization of counts per sample")
 
 ## Compute the median per column
 median.per.column <- apply(counts, 2, median)
 
 ## Compute the global median count for all the samples together
 median.count.allsamplestogether <- median(unlist(counts))
-dim(counts)
+#dim(counts)
 
 ## Plot a histogram to show the widespread of the median count per sample
 hist(median.per.column, breaks=100, col="cyan")
@@ -413,17 +634,19 @@ for (j in 1:ncol(counts.mednorm)) {
 counts.mednorm.log2 <- log2(counts.mednorm)
 
 ```
-
+The boxplots highlight the effect of median-based normalization: after normalization, all samples have the same median. 
 
 #### Boxplots of sample-wise standardized counts (log2-transformed)
 
 ```{r boxplots of log2-transformed median-based normalized count, fig.height=12, fig.width=8, fig.cap="Box plot of the  median-based normalized and log2-Introduction to differential gene expression analysis using RNA-seqtransformed counts. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
 
+message("Genering boxplots for median-based log2-transformed counts")
 for (genotype in c("WT", "SNF2")) {
-  boxplot(counts.mednorm.log2[,sample.description$genotype == genotype], 
-          horizontal = TRUE, las=2, col=color.code[genotype],
-          main=genotype,
-          xlab=paste(sep="", "median-based normalized log2(counts), with epsilon=", epsilon))
+  boxplot(
+    counts.mednorm.log2[,sample.description$genotype == genotype], 
+    horizontal = TRUE, las=1, col=color.code[genotype],
+    main=genotype, cex.axis=0.6, cex.label=0.8, 
+    xlab=paste(sep="", "median-based normalized log2(counts), with epsilon=", epsilon))
 }
 
 ```
@@ -434,14 +657,27 @@ Plot an histogram of the raw counts (all the table) versus log2-transformed medi
 
 
 ```{r plot histograms of log2-transformed versus raw counts, fig.width=12, fig.height=5}
+message("Distribution of count values, before and after normalization and log2")
+
 par(mfrow=c(1,2)) 
-hist(unlist(counts), breaks=20000, xlim=c(0,5000), main="Raw counts (truncated X axis)", col="#DDBBFF")
-hist(unlist(counts.mednorm.log2),  breaks=100, main="log2-transformed, median-normalized counts", col="#BBDDDD")
+hist(unlist(counts), 
+     breaks=20000, xlim=c(0,5000), 
+     main="Raw counts", 
+     xlab="Read counts per gene (truncated axis)", 
+     ylab="Number of genes in all samples", 
+     col="#DDBBFF", las=1,cex.axis=0.7)
+hist(unlist(counts.mednorm.log2),  
+     main="median-norm. log2(counts)", 
+     xlab="median-norm. log2(counts) per gene", 
+     ylab="Number of genes in all samples", 
+     breaks=100, col="#BBDDDD")
 par(mfrow=c(1,1))
 ```
 
 
-This distribution does not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in two different samples, and which follows its own distribution. The histograms above can thus be understood as a mixture of ~7000 (number of genes) times 2 (number of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
+This distribution does not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in 2 different genotypes (wild-type and Snf2 mutant), and which follows its own distribution, with its own mean and dispersion. 
+
+The histograms above can thus be understood as a mixture of `r nrow(counts)` (number of genes) times 2 (number of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
 
 ### Exercise 4. Statistics per gene (rows of the count table)
 
@@ -452,6 +688,8 @@ Based on the standardized log2-transformed counts, compute a table with statisti
 </font>
 
 ```{r stats_per_gene}
+message("Computing gene-wise statistics")
+
 ## Compute gene-wise statistics
 stats.per.gene <- data.frame(
   mean= apply(counts, 1, mean),
@@ -496,6 +734,8 @@ b. Draw a plot to compare the mean expression per gene between WT and SNF2 genot
 
 ```{r fig.width=7, fig.height=7, fig.cap="Comparison of mean read counts per gene between the two genotypes. Note that this drawing is very preliminary, since we did not yet normalize the libraries. It is just to get a rough idea. "}
 
+message("Comparing mean counts per gene between the 2 genotypes.")
+
 ## Compute mean counts per sample class for each gene
 stats.per.gene$WT.mean <- apply(counts.wt, 1, mean)
 stats.per.gene$Snf2.mean <- apply(counts.snf2, 1, mean)
@@ -506,7 +746,7 @@ stats.per.gene$Snf2.mean <- apply(counts.snf2, 1, mean)
 ## see also https://terpconnect.umd.edu/~toh/ColorLesson/ for explanation of color perception
 plot(stats.per.gene$WT.mean, stats.per.gene$Snf2.mean,
      main="Mean read counts per gene",
-     col="#006688",
+     col="#006688", las=1, cex.axis=0.7,
      xlab="WT genotype",
      ylab="Snf2 genotype"
     )
@@ -517,6 +757,7 @@ abline(v=0, col="black") # Draw a vertical line to mark Y axis
 
 ```
 
+On this plot, each dot corresponds to one gene, and its horizontal and vertical position  indicate its mean raw counts for WT and Snf2 samples, respectively. 
 
 ### Log2 mean values
 
@@ -528,14 +769,14 @@ $$\frac{1}{n}\sum_{j=1}^{n}{log_2(x_{i,j})} = log_2(\sqrt[n]{\prod_{j=1}^{n}{x_{
 ```{r fig.width=7, fig.height=7, fig.cap="Comparison of mean read log2(counts) per gene between the two genotypes. Note that this drawing is very preliminary, since we did not yet normalize the libraries. It is just to get a rough idea. "}
 
 ## Compute mean counts per sample class for each gene
-stats.per.gene$WT.log2.mean <- apply(counts.log2[, sample.description$genotype=="WT"], 1, mean)
-stats.per.gene$Snf2.log2.mean <- apply(counts.log2[, sample.description$genotype=="SNF2"], 1, mean)
+stats.per.gene$WT.mednorm.log2.mean <- apply(counts.mednorm.log2[, sample.description$genotype=="WT"], 1, mean)
+stats.per.gene$Snf2.mednorm.log2.mean <- apply(counts.mednorm.log2[, sample.description$genotype=="SNF2"], 1, mean)
 
-plot(stats.per.gene$WT.log2.mean, stats.per.gene$Snf2.log2.mean,
-     main="Mean log2-transformed read counts per gene",
+plot(stats.per.gene$WT.mednorm.log2.mean, stats.per.gene$Snf2.mednorm.log2.mean,
+     main="Mean log2 median-norm. counts per gene",
      col="#008844",
-     xlab="WT genotype; log2(counts)",
-     ylab="Snf2 genotype; log2(counts)"
+     xlab="WT; log2(counts)",
+     ylab="Snf2 mutant; log2(counts)"
     )
 abline(a=0,b=1, col="#FF0066", lwd=2)
 abline(v=0, col="black")
@@ -552,21 +793,6 @@ grid(col="blue")
 2. Learn to use the *DESeq2* and *edgeR* packages by using the Vignettes. 
 3. Run DESeq2 and edgeR on the yeast dataset, in order to detect differentially expressed genes between WT and Snf2. 
 4. After that, you will analyse the robustness of the lists of differentially expressed genes by running resampling approaches (bootstrap, jacknife, subsampling). 
-
-Regularly we discuss about the results and interpret. 
-
-
-```{r by using EdgeR, we filtering out low count reads since it would be impossible to detect diffrential expression}
-
-## counts
-hist(log10(apply(counts, 2, sum)), breaks=50,
-     main="Sum of counts per sample", col="#DDEEFF",
-     xlab="Log10(sum of counts)", ylab="Number of samples", xlim=c(6.7,7.2))
-# print(counts[1000:1010,])
-# dim(counts) ## Check the dimensions of the count table. 
-## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
-
-```
 
 We will now create a DGEList object to hold our read counts. DGEList is an example of the custom task-specific structure that are frequently used in Bioconductor to make analyses easier.
 **DGEList()** is the function that converts the count matrix into an edgeR object. BUT Firstly:- we must have a group variables that tells edgeR which samples belong to which group.
@@ -734,7 +960,8 @@ Framework
 <fontcolor = "blue"> Motivation </font> – scaling to library size as a form of normalization makes intuitive sense, given it is expected that sequencing a sample to half the depth will give, on average, half the number of reads mapping to each gene.
 <font color = "blue">Assumption </font>– read counts are proportional to expression level and sequencing depth.
 <font color = "bule">Method </font> – divide transcript read count by total number of reads and rescale the factors to counts per million
-$$$C_{j}= /frac{10}{D_{j}}$
+
+$$C_{j}= /frac{10}{D_{j}}$$
 
 ```{r Implementes - count per million library sum-based normalization method}
 
@@ -757,16 +984,9 @@ apply(cpm, 2, sum)
 ## OK, this works !
 
 ```
-### Trimmed Mean of M-values (TMM)
-- <font color="vlue">Motivation </font> total read count is strongly dependent on a few highly expressed transcripts
-- <font color ="blue">Assumption</font> – the majority of genes are not differentially expressed
-Method – a trimmed mean is the average after removing the upper and lower x% of the data. The TMM procedure
-is doubly trimmed, by log-fold-changes $M_{g}(j, r)$ (sample $j$ relative to sample r for gene $g$)
-$$M_{g}(j,r)=/log_{2}(K_{gj}/frac D_{j}) − log_{2}(K_{gr}/frac D_{r})$$
-and by absolute intensity $A_{g}(k,r)$
-$$A_{g}(j, r) = 1/frac 2 (log_{2}(K_{gj} /D_{j} ) + log_{2}(K_{gr} /frac D_{r}))$$
 
 
+<<<<<<< HEAD
 ```{rImplementation of Trimmed Mean of M-Values (TMM)}
 # k      <- data.frame(matrix(ncol=ncol(counts.wt), nrow=nrow(counts.wt)))
 # row.names(k)<-row.names(counts.wt)
@@ -784,14 +1004,14 @@ libsum.k.wt.all <- sum(libsum.k.wt.per.sample)
 libsum.k.snf2.per.sample <- apply(counts.snf2, 2,sum)
 libsum.k.snf2.all <- sum(libsum.k.snf2.per.sample)
 
-for(j in 1:ncol(counts)) {
-      # for (j in 1:ncol(counts.snf2)){
-     for(i in 1:nrow(counts)){
-            Mg[i] <-log2((counts.wt[i,j]/libsum.k.wt.per.sample[j])/(counts.snf2[i,j]/libsum.k.snf2.per.sample[j]))
-            Ag[i] <- 1/2*(log2((counts.wt[i,j]/libsum.k.wt.all[j])*(counts.snf2[i,j]/libsum.k.snf2.all[j])))
-     # }
-   }
-}
+# for(j in 1:ncol(counts)) {
+#       # for (j in 1:ncol(counts.snf2)){
+#      for(i in 1:nrow(counts)){
+#             Mg[i] <-log2((counts.wt[i,j]/libsum.k.wt.per.sample[j])/(counts.snf2[i,j]/libsum.k.snf2.per.sample[j]))
+#             Ag[i] <- 1/2*(log2((counts.wt[i,j]/libsum.k.wt.all[j])*(counts.snf2[i,j]/libsum.k.snf2.all[j])))
+#      # }
+#    }
+# }
 
 
 Mg <-function(counts) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf2.all))
@@ -799,9 +1019,11 @@ Ag <- function (counts) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsu
 
 Mg <-apply(as.matrix(counts) ,2, Mg)
 Ag <- apply(counts, 2, Ag)   
-plot(Mg,Ag)
+# plot(Mg,Ag)
 
 ```
+=======
+>>>>>>> 6cb5f4affaf3aa0b2ab33f1fc46d6981e39b6bb4
 
 ## Multidimensional scaling
 
