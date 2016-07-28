@@ -99,7 +99,9 @@ message("Loading data")
 
 ## Load two tables containing the counts per gene for the wild-type (WT) and for the mutant (Snf2) strains, respectively. 
 dir.counts <- file.path(dir.base, "data/counts_per_gene")
+# list.files(dir.counts)
 message("Loading counts from directory ", dir.counts)
+
 counts.wt <- read.delim(file=file.path(dir.counts, "WT_raw.tsv"), row.names = 1)
 names(counts.wt) <- paste(sep=".", "WT", 1:ncol(counts.wt))
 
@@ -113,7 +115,7 @@ sample.groups <-c("WT", "Snf2")
 gene.descr.file <- file.path(dir.counts, "gene_descriptions.tab")
 message("Loading gene descriptions ", gene.descr.file)
 gene.descriptions <- read.delim(gene.descr.file, header=TRUE)
-# View(gene.descriptions)
+ #View(gene.descriptions)
 
 message("Data loaded")
 
@@ -132,6 +134,31 @@ message("Data loaded")
 6. Based on the column `chrom.id`, count the number of reads per chromosome (use the function `table()`), and represent it in a barplot.
 7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
 
+```{r Gene annotation exploration}
+dim(gene.descriptions)
+count.number.gene<-nrow(gene.descriptions)
+gene.descriptions.lenghth <- vector()
+j<- 1
+for (j in 1:nrow(gene.descriptions)){
+ 
+    if (!isEmpty(gene.descriptions[j,6]) && !isEmpty(gene.descriptions[j,5]) ){
+ gene.descriptions.lenghth<- gene.descriptions[j,6] - gene.descriptions[j,5] 
+  }
+
+}
+
+
+gene.descriptions <-as.matrix(gene.descriptions)
+
+
+gene.leghth<-apply(gene.descriptions[,], 1,length)
+gene.descriptions.modifed<- data.frame( matrix(ncol =ncol(gene.descriptions), nrow= nrow(gene.descriptions)),
+              names(gene.descriptions.modifed)<-names(gene.descriptions),                 
+              row.names(gene.descriptions.modifed)<-row.names(gene.descriptions)
+                                        )
+
+View(gene.descriptions.modifed)
+```
 
 ## Data exploration
 
