@@ -99,6 +99,7 @@ message("Loading data")
 
 ## Load two tables containing the counts per gene for the wild-type (WT) and for the mutant (Snf2) strains, respectively. 
 dir.counts <- file.path(dir.base, "data/counts_per_gene")
+message("Loading counts from directory ", dir.counts)
 counts.wt <- read.delim(file=file.path(dir.counts, "WT_raw.tsv"), row.names = 1)
 names(counts.wt) <- paste(sep=".", "WT", 1:ncol(counts.wt))
 
@@ -107,10 +108,30 @@ names(counts.snf2) <- paste(sep=".", "SNF2", 1:ncol(counts.snf2))
 
 sample.groups <-c("WT", "Snf2")
 
+
+## Load gene descriptions
+gene.descr.file <- file.path(dir.counts, "gene_descriptions.tab")
+message("Loading gene descriptions ", gene.descr.file)
+gene.descriptions <- read.delim(gene.descr.file, header=TRUE)
+# View(gene.descriptions)
+
 message("Data loaded")
 
-
 ```
+
+
+## Gene annotation exploration
+
+**Exercise for Mustafa: ** 
+
+1. Count the number of genes in the `gene.descriptions` data frame.
+2. Add a column to this data frame with the length of each gene. 
+3. Draw an histogram with the distribution of gene lengths. 
+4. Draw a box plot with the distribution of gene lengths. 
+5. Compute the min, max, mean, median of all the gene lengths. 
+6. Based on the column `chrom.id`, count the number of reads per chromosome (use the function `table()`), and represent it in a barplot.
+7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
+
 
 ## Data exploration
 
@@ -388,7 +409,7 @@ for (k in 1:ncol(Y)) {
     M[, k] <- log2( (Y[,k]/ sum(Y[,k]))/(Y[,ref.sample] / sum(Y[,ref.sample])))
   }
 }
-View(M)
+# View(M)
 
 ## Create an datagram to store A Values 
 y <-counts+1
@@ -403,17 +424,76 @@ k <-1
 for (k in 1:ncol(y)){
   if(k != k.prime){
     A[ ,k] <- 1/2*log2(y[,k]/ sum(y[,k]) * y[,ref.sample]/sum(y[,ref.sample]))
-
-      }
+  }
 }
 
 dim(M)
 dim(A)
 
-j <- 1
-trimming.percent <- c("lower"=3, "upper"=5)
-trimming.number <- round(nrow(M) * trimming.percent / 100)
-                  
+```
+
+### MA-plot
+
+We will generate various plots to compare the expression level of an arbitrary sample (e.g. sample SNF2.2) with the reference sample (in this case, `r ref.sample`).
+
+```{r MA-plot, fig.width=12, fig.height=12, fig.cap="Count comparisons between 2 arbitrary samples. "}
+test.sample <- "SNF2.2"
+
+par(mfrow=c(2,2))
+
+## Draw a scatter plot with the raw counts
+max.count <- max(c(counts[, ref.sample], counts[, test.sample]))
+plot(counts[, ref.sample], counts[, test.sample],
+     main="Raw count comparison",
+     xlab=ref.sample,
+     ylab=test.sample,
+     col="#888888", 
+     xlim=c(0, max.count),
+     ylim=c(0, max.count),
+     grid(col="#BBBBBB", lty="solid"),
+     cex=0.5)
+abline(a=0, b=1, col="black")
+
+
+## Draw a scatter plot with the log2-transformed counts
+max.log2.count <- max(c(counts.log2[, ref.sample], counts.log2[, test.sample]))
+plot(counts.log2[, ref.sample], counts.log2[, test.sample],
+     main="Log2-tranformed count comparison",
+     xlab=ref.sample,
+     ylab=test.sample,
+     col="#888888", 
+     xlim=c(0, max.log2.count),
+     ylim=c(0, max.log2.count),
+     grid(col="#BBBBBB", lty="solid"),
+     cex=0.5)
+abline(a=0, b=1, col="black")
+
+
+## Draw an M-A plot for some arbitrary sample
+plot(A[, test.sample], M[, test.sample],
+main=paste ("MA plot:", test.sample, "vs", ref.sample),
+     xlab="M = mean log2-transformed counts",
+     ylab="A = Log2 fold change",
+     col="#888888", 
+     grid(col="#BBBBBB", lty="solid"),
+     cex=0.5)
+abline(h=0, col="black")
+
+par(mfrow=c(1,1))
+
+```
+
+On the raw count plot, we see that there is a gene that is highly expressed in the wild-typpe (8e+4 reads) but very weak in the Snf2 mutant (~0 reads)
+
+```{r TMM computation}
+## Compute the TMM
+trimming.percent <- c("lower"=3, "upper"=5) ## Parameters: upper and lower percent to trim
+trimming.number <- round(nrow(M) * trimming.percent / 100) ## Compute the number of genes to trim according to the above percent
+
+TMM <- vector()
+TMM_median <- vector()
+
+j <- 1 ## Not necessary, just for quick test without running the whole loop
 for (j in 1:ncol(M)) {
   M.current.sample.sorted <- sort(unlist(M[,j]), decreasing = FALSE)   
   first.index.to.keep <- (trimming.number["lower"] +1)
@@ -423,10 +503,11 @@ for (j in 1:ncol(M)) {
   length(M.current.sample.trimmed)
   
   TMM[j] <- mean(M.current.sample.trimmed)
-
- TMM_median[j]<- median(M.current.sample.trimmed)
+  TMM_median[j]<- median(M.current.sample.trimmed)
 }
 
+## Compare trimmed mean and trimmed median
+plot(TMM, TMM_median)
   
 par(mfrow=c(1,2))
 hist(TMM, breaks=100, col="cyan")
@@ -481,16 +562,17 @@ _________________________________
 when we need the amount of variance is approximately the same across diffrent mean values,in stady case for multidimentional dta for example clustring and principal components analysis(PCA), this considered common statistical methods for exploratory analysis of multidimentional data. these suppose the data genarally has the same range of variance at diffrent ranges of the mean values this data so-called *HOMOSKEDASTIC*.
 
 ```{r}
-library(DESeq2)
-nrow(counts)
-colData(counts)
-dds<- counts[rowSums(counts)> 1,]
 
-nrow(dds)
-dds<-t(dds)
+# library(DESeq2)
+# nrow(counts)
+# colData(counts)
+# dds<- counts[rowSums(counts)> 1,]
+# 
+# nrow(dds)
+# dds<-t(dds)
+# 
+# rlcounts<-rlog(t(dds), blind=FALSE)
 
-rlcounts<-rlog(t(dds), blind=FALSE)
-estimateSizeFactors()
 ```
 
 
@@ -967,8 +1049,7 @@ apply(cpm, 2, sum)
 ```
 
 
-<<<<<<< HEAD
-```{rImplementation of Trimmed Mean of M-Values (TMM)}
+```{r Implementation of Trimmed Mean of M-Values (TMM)}
 # k      <- data.frame(matrix(ncol=ncol(counts.wt), nrow=nrow(counts.wt)))
 # row.names(k)<-row.names(counts.wt)
 # names(k)<-names(counts.wt)
@@ -1003,8 +1084,6 @@ Ag <- apply(counts, 2, Ag)
 # plot(Mg,Ag)
 
 ```
-=======
->>>>>>> 6cb5f4affaf3aa0b2ab33f1fc46d6981e39b6bb4
 
 ## Multidimensional scaling
 
