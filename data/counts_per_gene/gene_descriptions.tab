@@ -1,3 +1,4 @@
+gene.id	prot.id	chrom.id	strand	start	end	name	synonyms	description
 15s_rrna	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>
 21s_rrna	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>
 hra1	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>	<NULL>
