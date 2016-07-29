@@ -114,8 +114,10 @@ sample.groups <-c("WT", "Snf2")
 ## Load gene descriptions
 gene.descr.file <- file.path(dir.counts, "gene_descriptions.tab")
 message("Loading gene descriptions ", gene.descr.file)
-gene.descriptions <- read.delim(gene.descr.file, header=TRUE)
+gene.descriptions <- read.delim(gene.descr.file, header=TRUE, na.strings = "<NULL>")
  #View(gene.descriptions)
+
+gene.descriptions$length <- gene.descriptions$end - gene.descriptions$start + 1
 
 message("Data loaded")
 
