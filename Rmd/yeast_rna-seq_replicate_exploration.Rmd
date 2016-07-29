@@ -3,6 +3,11 @@ title: "Exploring RNA-seq data from Gierlinski, Schurch and Barton"
 author: "Mustafa Abu El-Qumsan & Jacques van Helden"
 date: '`r Sys.Date()`'
 output:
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: 3
   html_document:
     fig_caption: yes
     highlight: zenburn
@@ -10,11 +15,6 @@ output:
     toc: yes
     toc_depth: 3
     toc_float: yes
-  pdf_document:
-    fig_caption: yes
-    highlight: zenburn
-    toc: yes
-    toc_depth: 3
   word_document: default
 bibliography: bibliography_rna-seq.bib
 ---
@@ -119,15 +119,6 @@ message("Loading gene descriptions ", gene.descr.file)
 gene.descriptions<- read.delim(gene.descr.file, header=TRUE, na.strings = "<NULL>")
 
 
- # View(gene.descriptions)
-
-gene.descriptions <- read.delim(gene.descr.file, header=TRUE, na.strings = "<NULL>")
-
-# Count the nu;ber of genes from the RNA-seq data for which we have no info in the gene description file.
-message("Genes with coordinates in the description file: ", sum(!is.na(gene.descriptions$start)))
-message("Genes with no coordinates in the description file: ", sum(is.na(gene.descriptions$start)))
-
-
 # View(gene.descriptions)
 message("Data loaded")
 
@@ -146,25 +137,35 @@ message("Data loaded")
 6. Based on the column `chrom.id`, count the number of reads per chromosome (use the function `table()`), and represent it in a barplot.
 7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
 
-```{r yeast_gene_length_distrib, fig.width=8, fig.height=6, fig.cap="Length distribution for all the yeast genes", fig.path="figures/"}
+```{r yeast_gene_length_distrib, fig.width=8, fig.height=10, fig.cap="Length distribution for all the yeast genes", fig.path="figures/"}
 # 1. Count the number of genes in the `gene.descriptions` data frame.
 #dim(gene.descriptions)
 count.number.gene<-nrow(gene.descriptions)
 message(sep= '   ' ,"Number of genes"," =  ", count.number.gene  )
+# Count the number of genes from the RNA-seq data for which we have no info in the gene description file.
+message("Genes with coordinates in the description file: ", sum(!is.na(gene.descriptions$start)))
+message("Genes with no coordinates in the description file: ", sum(is.na(gene.descriptions$start)))
+
 
 # 2. Add a column to this data frame with the length of each gene. 
 gene.descriptions$length <- gene.descriptions$end - gene.descriptions$start + 1
 
 # 3. Draw an histogram with the distribution of gene lengths. 
+par(mfrow=c(2,1))
+
 max.gene.len <- max(gene.descriptions$length, na.rm = TRUE)
 break.size <- 100
 hist(gene.descriptions$length, 
-      col="#EEDDFF", #  ylim=c(0,300),
+      col="#FFDDEE", #  ylim=c(0,300),
      main="Gene length distribution",
      breaks=seq(from=0, to = break.size*(ceiling(max.gene.len/break.size)), by=break.size),
      xlab="Gene length",
      ylab="Number of genes"
   )
+abline(v=mean(gene.descriptions$length, na.rm = TRUE), col="brown", lwd=3)
+abline(v=median(gene.descriptions$length, na.rm = TRUE), col="darkgreen", lwd=3)
+abline(v=quantile(x = gene.descriptions$length, na.rm = TRUE, probs=0.25), col="darkgreen", lwd=1) ## Plot the first quartile
+abline(v=quantile(x = gene.descriptions$length, na.rm = TRUE, probs=0.75), col="darkgreen", lwd=1) ## Plot the third quartile
 
 # 4. Draw a box plot with the distribution of gene lengths. 
 boxplot( gene.descriptions$length,
@@ -172,6 +173,20 @@ boxplot( gene.descriptions$length,
     main="The length for each genes in yeast Data Sets  ", cex.axis=0.6, cex.label=0.8,
     xlab=paste(sep="", " The Boxplot the distribution of gene lengths" ))  
 
+par(mfrow=c(1,1))
+
+```
+
+
+### Some remarks
+
+- On the histogram, we see that there is a difference between the mean (brown vertical bar) and the median (thick dark green vertical bar). ow do you explain this ? 
+
+
+### Gene length statistics
+
+
+```{r}
 
 # 5. Compute the min, max, mean, median of all the gene lengths.
 summary(gene.descriptions$length)
@@ -179,23 +194,49 @@ summary(gene.descriptions$length)
 # which.min(gene.descriptions$length)
 # sum(gene.descriptions$length)
 
-mean(gene.descriptions$length) 
-(gene.descriptions$length)
+gene.len.stats <- data.frame(
+  min = min(gene.descriptions$length, na.rm=TRUE),
+  Q1 = quantile(x=gene.descriptions$length, probs=0.25, na.rm=TRUE),
+  median = median(gene.descriptions$length, na.rm=TRUE),
+  mean = mean(gene.descriptions$length, na.rm=TRUE),
+  Q3 = quantile(x=gene.descriptions$length, probs=0.75, na.rm=TRUE),
+  max = max(gene.descriptions$length, na.rm=TRUE)
+)
+kable(gene.len.stats, row.names = FALSE)
 
-  
+```
+
+### Number of genes per chromosome
+
+```{r genes_per_chromosome}
 # 6. Based on the column `chrom.id`, count the number of reads per chromosome (use the function `table()`), and represent it in a barplot.
-x <-table(gene.descriptions$chrom.id)
-View(x)
-# 7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
+x <- data.frame(table(gene.descriptions$chrom.id))
+names(x) <- c("Chromosome", "Number of genes")
+kable(x, caption = "**Table:** Number of genes per chromosome in the yeast *Saccharomyces cerevisiae*. ")
+rm (x)
+```
 
- grep("SNF",names(gene.descriptions$name))
+### Description of the SNF genes
+
+
+```{r snf_genes}
+
+# 7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
+SNF.gene.indices <- grep(pattern = "SNF", x = gene.descriptions$name, value = FALSE)
+SNF.gene.names <- grep(pattern = "SNF", x = gene.descriptions$name, value = TRUE)
+
+## Print an R-markdown formatted table with the description of the SNF genes
+gene.descriptions$synonyms <- gsub(pattern = ";" , replacement = "; ", x = gene.descriptions$synonyms)
+kable(gene.descriptions[SNF.gene.indices, ], row.names = FALSE, 
+      caption = "**Table: SNF gene annotations.** ")
+
 ```
 
 ## Data exploration
 
 We will first check the dimension of the two tables.
 
-```{r}
+```{r merging_count_tables}
 message("Merging WT and SNF2 counts into a single table.")
 
 ## count the number of genes (rows) in the two data tables.
@@ -455,34 +496,24 @@ row.names(M) <- row.names(Y)
 sorted.wt.libsum <- sort(apply(counts.wt, 2, sum))
 sorted.wt.names <- names(sorted.wt.libsum)
 ref.sample <- sorted.wt.names[length(sorted.wt.libsum)%/%2]
-k.prime <- which(names(Y) == ref.sample)
-
-## For the reference sample, use the raw Y
-M[, k.prime] <- Y[,k.prime]
+k.prime <- which(names(Y) == ref.sample) ## Indexof the reference sample (k' in Robinson-Oshlack paper)
 
 ## Compute M values
 # The Y  variable of Robinson-Oshlack formula corresponds to our "Y" data frame
 for (k in 1:ncol(Y)) {
-  if (k != k.prime) {
     M[, k] <- log2( (Y[,k]/ sum(Y[,k]))/(Y[,ref.sample] / sum(Y[,ref.sample])))
-  }
 }
 # View(M)
 
 ## Create an datagram to store A Values 
-y <-counts+1
-A <-data.frame(matrix(ncol=ncol(y), nrow=nrow(y)))
-names(A)<- names(y)
-row.names(A)<- row.names(y)
+A <- data.frame(matrix(ncol=ncol(Y), nrow=nrow(Y)))
+names(A) <- names(Y)
+row.names(A) <- row.names(Y)
 
 # For the reference smaple, raw Y
-A[,k.prime] <- y[,k.prime]
 ## Compute A Values
-k <-1
-for (k in 1:ncol(y)){
-  if(k != k.prime){
-    A[ ,k] <- 1/2*log2(y[,k]/ sum(y[,k]) * y[,ref.sample]/sum(y[,ref.sample]))
-  }
+for (k in 1:ncol(Y)){
+    A[ ,k] <- 1/2*log2(Y[,k]/ sum(Y[,k]) * Y[,ref.sample]/sum(Y[,ref.sample]))
 }
 
 dim(M)
@@ -541,7 +572,20 @@ par(mfrow=c(1,1))
 
 ```
 
-On the raw count plot, we see that there is a gene that is highly expressed in the wild-typpe (8e+4 reads) but very weak in the Snf2 mutant (~0 reads)
+
+#### Some remarks
+
+- The plot with raw counts shows very well that there is a handful of outlier genes, with huge count numbers (~100.000 counts for a single gene !), whereas most genes have much smaller counts (average=1440)?. 
+
+- The log2-transformed counts better show the dynamic range of counts: the dots corresponding to the genes are better separated on the graph. 
+
+- The MA plot can be *approximately* perceived as a "rotation" of the scatter plot of log2 counts. The abcsissa ($M$) indicates the mean level of expression (in log2-transformed counts) whereas the ordinate indicates the orientation of the impact of SNF2 mutation: above the axis for the genes that are up-regulated (expressed at a stronger level in the SNF2 mutant than in the WT), and below the axis for down-regulated genes.
+
+- Since the normal function of the Snf2 protein is to repress expression, we could say that the genes that are up-regulated in SNF2 mutant are "de-repressed": the idea is that in normal conditions (in the WT strain) these genes are repressed by the Snf2 protein, but in the SNF2 mutant the protein is defective, so these genes are not repressed anymore. 
+
+- In the next steps, we will apppy differential analysis in order to establish a list of all the genes that are de-repressed (down-regulated) in SNF2 mutant, and another list with all the genes that are up-regulated (expressed stronger) in SNF2 mutant relative to WT. 
+
+- On the raw count plot, we see that there is a gene that is highly expressed in the wild-typpe (8e+4 reads) but very weak in the Snf2 mutant (~0 reads).
 
 ```{r TMM computation}
 ## Compute the TMM
