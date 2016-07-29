@@ -9,7 +9,7 @@ output:
     theme: cerulean
     toc: yes
     toc_depth: 3
-    toc_float: true
+    toc_float: yes
   pdf_document:
     fig_caption: yes
     highlight: zenburn
@@ -115,11 +115,20 @@ sample.groups <-c("WT", "Snf2")
 gene.descr.file <- file.path(dir.counts, "gene_descriptions.tab")
 message("Loading gene descriptions ", gene.descr.file)
 
+
 gene.descriptions<- read.delim(gene.descr.file, header=TRUE, na.strings = "<NULL>")
 
 
  # View(gene.descriptions)
 
+gene.descriptions <- read.delim(gene.descr.file, header=TRUE, na.strings = "<NULL>")
+
+# Count the nu;ber of genes from the RNA-seq data for which we have no info in the gene description file.
+message("Genes with coordinates in the description file: ", sum(!is.na(gene.descriptions$start)))
+message("Genes with no coordinates in the description file: ", sum(is.na(gene.descriptions$start)))
+
+
+# View(gene.descriptions)
 message("Data loaded")
 
 ```
@@ -137,27 +146,48 @@ message("Data loaded")
 6. Based on the column `chrom.id`, count the number of reads per chromosome (use the function `table()`), and represent it in a barplot.
 7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
 
-```{r Gene annotation exploration}
-dim(gene.descriptions)
+```{r yeast_gene_length_distrib, fig.width=8, fig.height=6, fig.cap="Length distribution for all the yeast genes", fig.path="figures/"}
+# 1. Count the number of genes in the `gene.descriptions` data frame.
+#dim(gene.descriptions)
 count.number.gene<-nrow(gene.descriptions)
 message(sep= '   ' ,"Number of genes"," =  ", count.number.gene  )
 
-gene.descriptions.lenghth <- vector()
-j<- 1
-for (j in 1:nrow(gene.descriptions)){
+# 2. Add a column to this data frame with the length of each gene. 
+gene.descriptions$length <- gene.descriptions$end - gene.descriptions$start + 1
 
- gene.descriptions.lenghth[j]<- gene.descriptions[j,6] -gene.descriptions[j,5] 
-  }
+# 3. Draw an histogram with the distribution of gene lengths. 
+max.gene.len <- max(gene.descriptions$length, na.rm = TRUE)
+break.size <- 100
+hist(gene.descriptions$length, 
+      col="#EEDDFF", #  ylim=c(0,300),
+     main="Gene length distribution",
+     breaks=seq(from=0, to = break.size*(ceiling(max.gene.len/break.size)), by=break.size),
+     xlab="Gene length",
+     ylab="Number of genes"
+  )
 
-gene.descriptions <-as.matrix(gene.descriptions)
+# 4. Draw a box plot with the distribution of gene lengths. 
+boxplot( gene.descriptions$length,
+    horizontal = TRUE, las=1, col="#EEDDFF",
+    main="The length for each genes in yeast Data Sets  ", cex.axis=0.6, cex.label=0.8,
+    xlab=paste(sep="", " The Boxplot the distribution of gene lengths" ))  
 
-gene.descriptions.modifed<- data.frame( matrix(ncol =ncol(gene.descriptions), nrow= nrow(gene.descriptions)),
-              names(gene.descriptions.modifed)<-names(gene.descriptions),                 
-              row.names(gene.descriptions.modifed)<-row.names(gene.descriptions)
-                                        )
-gene.descriptions.modifed <- gene.descriptions
 
-View(gene.descriptions.modifed)
+# 5. Compute the min, max, mean, median of all the gene lengths. 
+which.max(gene.descriptions$length)
+which.min(gene.descriptions$length)
+sum(gene.descriptions$length)
+
+mean(gene.descriptions$length) 
+(gene.descriptions$length)
+
+  
+# 6. Based on the column `chrom.id`, count the number of reads per chromosome (use the function `table()`), and represent it in a barplot.
+?data.table:: 
+
+# 7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
+
+
 ```
 
 ## Data exploration
@@ -310,7 +340,7 @@ counts.log2 <- log2(counts.epsilon)
 The boxplots below summarizes the distribution of log2-transformed counts per genes for each sample. 
 
 ```{r boxplots of log2-transformed count, fig.height=12, fig.width=6, fig.cap="Box plot of the log2-transformed counts per sample. Zero values were converted to an epsilon=1/4 before log2-transformation, and this appear as -2 on the log2-transformed plots. "}
-message("Genering boxplots")
+message("Generating boxplots")
 for (genotype in c("WT", "SNF2")) {
   boxplot(
     counts.log2[,sample.description$genotype == genotype], 
