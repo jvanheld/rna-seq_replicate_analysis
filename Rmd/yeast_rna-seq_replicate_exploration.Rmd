@@ -173,21 +173,22 @@ boxplot( gene.descriptions$length,
     xlab=paste(sep="", " The Boxplot the distribution of gene lengths" ))  
 
 
-# 5. Compute the min, max, mean, median of all the gene lengths. 
-which.max(gene.descriptions$length)
-which.min(gene.descriptions$length)
-sum(gene.descriptions$length)
+# 5. Compute the min, max, mean, median of all the gene lengths.
+summary(gene.descriptions$length)
+# which.max(gene.descriptions$length)
+# which.min(gene.descriptions$length)
+# sum(gene.descriptions$length)
 
 mean(gene.descriptions$length) 
 (gene.descriptions$length)
 
   
 # 6. Based on the column `chrom.id`, count the number of reads per chromosome (use the function `table()`), and represent it in a barplot.
-?data.table:: 
-
+x <-table(gene.descriptions$chrom.id)
+View(x)
 # 7. Using the R function `grep()`, select all the genes whose name (`name`column of the gene.description data frame) contains the string "SNF".
 
-
+ grep("SNF",names(gene.descriptions$name))
 ```
 
 ## Data exploration
