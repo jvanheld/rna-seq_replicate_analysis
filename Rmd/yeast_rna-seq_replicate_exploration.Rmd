@@ -114,8 +114,11 @@ sample.groups <-c("WT", "Snf2")
 ## Load gene descriptions
 gene.descr.file <- file.path(dir.counts, "gene_descriptions.tab")
 message("Loading gene descriptions ", gene.descr.file)
-gene.descriptions <- read.delim(gene.descr.file, header=TRUE)
- #View(gene.descriptions)
+
+gene.descriptions<- read.delim(gene.descr.file, header=TRUE, na.strings = "<NULL>")
+
+
+ # View(gene.descriptions)
 
 message("Data loaded")
 
@@ -137,25 +140,22 @@ message("Data loaded")
 ```{r Gene annotation exploration}
 dim(gene.descriptions)
 count.number.gene<-nrow(gene.descriptions)
+message(sep= '   ' ,"Number of genes"," =  ", count.number.gene  )
+
 gene.descriptions.lenghth <- vector()
 j<- 1
 for (j in 1:nrow(gene.descriptions)){
- 
-    if (!isEmpty(gene.descriptions[j,6]) && !isEmpty(gene.descriptions[j,5]) ){
- gene.descriptions.lenghth<- gene.descriptions[j,6] - gene.descriptions[j,5] 
+
+ gene.descriptions.lenghth[j]<- gene.descriptions[j,6] -gene.descriptions[j,5] 
   }
-
-}
-
 
 gene.descriptions <-as.matrix(gene.descriptions)
 
-
-gene.leghth<-apply(gene.descriptions[,], 1,length)
 gene.descriptions.modifed<- data.frame( matrix(ncol =ncol(gene.descriptions), nrow= nrow(gene.descriptions)),
               names(gene.descriptions.modifed)<-names(gene.descriptions),                 
               row.names(gene.descriptions.modifed)<-row.names(gene.descriptions)
                                         )
+gene.descriptions.modifed <- gene.descriptions
 
 View(gene.descriptions.modifed)
 ```
