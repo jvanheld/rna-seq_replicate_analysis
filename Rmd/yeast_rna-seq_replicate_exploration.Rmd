@@ -3,11 +3,6 @@ title: "Exploring RNA-seq data from Gierlinski, Schurch and Barton"
 author: "Mustafa Abu El-Qumsan & Jacques van Helden"
 date: '`r Sys.Date()`'
 output:
-  pdf_document:
-    fig_caption: yes
-    highlight: zenburn
-    toc: yes
-    toc_depth: 3
   html_document:
     fig_caption: yes
     highlight: zenburn
@@ -15,6 +10,11 @@ output:
     toc: yes
     toc_depth: 3
     toc_float: yes
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: 3
   word_document: default
 bibliography: bibliography_rna-seq.bib
 ---
@@ -37,7 +37,8 @@ message("specifying parameters")
 ## The variable dir.base should be adapted to indicate the path of the
 ## rna-seq_replicate_analysis clone on your computer. 
 ## All other directories and files are defined relative to this base directory. 
-dir.base <- "~/rna-seq_replicate_analysis"
+dir.base <- "~/Documents/Practical_thesis_project/rna-seq_replicate_analysis"
+
 setwd(dir.base)
 
 
@@ -156,7 +157,7 @@ par(mfrow=c(2,1))
 max.gene.len <- max(gene.descriptions$length, na.rm = TRUE)
 break.size <- 100
 hist(gene.descriptions$length, 
-      col="#FFDDEE", #  ylim=c(0,300),
+      col="#FFDDAA", #  ylim=c(0,300),
      main="Gene length distribution",
      breaks=seq(from=0, to = break.size*(ceiling(max.gene.len/break.size)), by=break.size),
      xlab="Gene length",
@@ -180,7 +181,9 @@ par(mfrow=c(1,1))
 
 ### Some remarks
 
-- On the histogram, we see that there is a difference between the mean (brown vertical bar) and the median (thick dark green vertical bar). ow do you explain this ? 
+- On the histogram, we see that there is a difference between the mean (brown vertical bar) and the median (thick dark green vertical bar). How do you explain this ? 
+
+* The Median is the value that spearate tha higher half of Data from lower half, thence we use the Median in order to Descibing data compare with Mean which is simply described as the "Average" , furhter more the meadian is simply not affected by extremaly large or small values, this mean it is not skewed , but the Mean may be skewed by a small number extremely high or low values. briefly: For symmetric distributions, the mean is approximately equal to the median.  The tails of the distribution are the parts to the left and to the right, away from the mean. The tail is the part where the counts in the histogram become smaller.  
 
 
 ### Gene length statistics
@@ -227,6 +230,7 @@ SNF.gene.names <- grep(pattern = "SNF", x = gene.descriptions$name, value = TRUE
 
 ## Print an R-markdown formatted table with the description of the SNF genes
 gene.descriptions$synonyms <- gsub(pattern = ";" , replacement = "; ", x = gene.descriptions$synonyms)
+
 kable(gene.descriptions[SNF.gene.indices, ], row.names = FALSE, 
       caption = "**Table: SNF gene annotations.** ")
 
@@ -1543,6 +1547,12 @@ fData(cds)[c(1,3,4,5,6,7,8,9,10),]
 fData(cds)$disp_pooled
 ```
 
+*******************************************************************
+# Diffrential expression at gene level by the DESeq package 
+ $S_{j}$ is size factor 
+ $$
+```{r}
 
+```
 
 ## References
