@@ -1550,9 +1550,13 @@ fData(cds)$disp_pooled
 *******************************************************************
 # Diffrential expression at gene level by the DESeq package 
  $S_{j}$ is size factor 
- $$
+ $K_{ij}$ is the count value 
 ```{r}
-
+i <- 1
+counts[,2]
+for(i in 1:ncol(counts)){
+ k_iv<- apply(counts,2, factorial(counts[,i])^i)   
+}
 ```
 
 ## References
