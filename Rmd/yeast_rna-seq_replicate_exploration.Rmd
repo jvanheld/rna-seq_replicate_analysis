@@ -1553,10 +1553,12 @@ fData(cds)$disp_pooled
  $K_{ij}$ is the count value 
 ```{r}
 i <- 1
-counts[,2]
-for(i in 1:ncol(counts)){
- k_iv<- apply(counts,2, factorial(counts[,i])^i)   
-}
+
+exp(mean(log(x)))
+# counts[,2]
+# for(i in 1:ncol(counts)){
+ k_iv<- apply(counts,2, exp(mean(log(counts))))   
+# }
 ```
 
 ## References
