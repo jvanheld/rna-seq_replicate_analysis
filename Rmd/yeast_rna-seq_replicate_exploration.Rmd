@@ -37,7 +37,7 @@ message("specifying parameters")
 ## The variable dir.base should be adapted to indicate the path of the
 ## rna-seq_replicate_analysis clone on your computer. 
 ## All other directories and files are defined relative to this base directory. 
-dir.base <- "~/Documents/Practical_thesis_project/rna-seq_replicate_analysis"
+dir.base <- "~/rna-seq_replicate_analysis"
 
 setwd(dir.base)
 
@@ -1552,12 +1552,20 @@ fData(cds)$disp_pooled
  $S_{j}$ is size factor 
  $K_{ij}$ is the count value 
 ```{r}
-i <- 1
+# i <- 1
+# length(counts)
+# x <-c(2,1,4)
+# b <-prod(x,na.rm = TRUE)^(1/5)
+# 
+# m <-length(counts)
+# prod(counts[,i])^(1/m), na.rm = TRUE)
+# 
+# for (i in 1:ncol(counts)){
+#   x[i]<- apply(counts, 2,  )
+# }
 
-exp(mean(log(x)))
-# counts[,2]
 # for(i in 1:ncol(counts)){
- k_iv<- apply(counts,2, exp(mean(log(counts))))   
+ # k_iv<- apply(counts, 2, mean(log(counts)), na.rm = TRUE)   
 # }
 ```
 
