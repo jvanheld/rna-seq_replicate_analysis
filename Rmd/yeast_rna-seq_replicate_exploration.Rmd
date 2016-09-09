@@ -1551,7 +1551,40 @@ fData(cds)$disp_pooled
 # Diffrential expression at gene level by the DESeq package 
  $S_{j}$ is size factor 
  $K_{ij}$ is the count value 
+ 
 ```{r}
+
+gm_mean = function(x, na.rm=TRUE){
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+gm <- vector()
+s <- vector()
+j <- 1
+for (j in 1:ncol(counts)){
+  gm[j] <-gm_mean(counts[,j])
+  s[j] <- median(counts[,j]/ gm[j])
+}
+
+j<-1
+for(j in 1:ncol(counts)){
+  x[j] <-counts[,j]/s[j]
+}
+qip <- 1/ncol(counts)* sum(x[j])
+
+j <- 1
+
+for(j in 1:ncol(counts)){
+  wip <- 1/(ncol(counts)-1) * sum((counts[,j]/s[j]-qip)^2)
+}
+ 
+j<-1
+for(j in 1:ncol(counts)){
+  z[j] <-1/s[j]
+   zip <- (qip/ncol(counts))* sum(z)
+
+}
+
+
 # i <- 1
 # length(counts)
 # x <-c(2,1,4)
