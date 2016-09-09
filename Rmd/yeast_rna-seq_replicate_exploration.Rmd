@@ -1098,7 +1098,7 @@ It is important to Normalise RNA-Seq both within and between samples, edgeR impl
 ```{r NORMALISATION by unsing edgR packege}
 # calcNormFactors
 dgList<- calcNormFactors(dgList, method = "TMM")
-dgList$count
+# dgList$count
 attributes(dgList)
 # kable(dgList[1:1,1:1 ])
 sample.description$replicate
@@ -1421,7 +1421,7 @@ cds = estimateSizeFactors(cds)
 sizeFactors(cds)
 
 ## this method is usefull for visualization our count values which are brought the common scale by dividing each column of the count table by the size factor for this column.
-head (counts(cds , normalized=TRUE))
+# head (counts(cds , normalized=TRUE))
 
 ```
 
@@ -1452,7 +1452,7 @@ cds = estimateDispersions(cds) ## this command to estimate the dispersion.
 str(fitInfo(cds)) # to allow the intermediate steps. 
 plotDispEsts(cds)
 fData(cds)[c(1,3,4,5,6,7,8,9,10),]
-fData(cds)$disp_pooled
+# fData(cds)$disp_pooled
 ```
 
 # inference: by calling Differential expression
@@ -1541,17 +1541,53 @@ cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
 # * it fits a curve through the estimates.
 # * it assignes to each gene a dispersion value. using a choice between the per-gene estimate and the fitted value.
 
-str(fitInfo(cds))
-plotDispEsts(cds)
-fData(cds)[c(1,3,4,5,6,7,8,9,10),]
-fData(cds)$disp_pooled
+# str(fitInfo(cds))
+# plotDispEsts(cds)
+# fData(cds)[c(1,3,4,5,6,7,8,9,10),]
+# fData(cds)$disp_pooled
 ```
 
 *******************************************************************
 # Diffrential expression at gene level by the DESeq package 
  $S_{j}$ is size factor 
  $K_{ij}$ is the count value 
+ 
 ```{r}
+
+gm_mean = function(x, na.rm=TRUE){
+  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+}
+gm <- vector()
+s <- vector()
+x <- vector()
+z <- vector()
+vp <- vector()
+j <- 1
+for (j in 1:ncol(counts)){
+  gm[j] <-gm_mean(counts[,j])
+  s[j] <- median(counts[,j]/ gm[j])
+}
+
+j<-1
+for(j in 1:ncol(counts)){
+  x[j] <-counts[,j]/s[j]
+}
+qip <- 1/ncol(counts)* sum(x[j])
+
+j <- 1
+
+for(j in 1:ncol(counts)){
+  wip[j] <- 1/(ncol(counts)-1) * sum((counts[,j]/s[j]-qip)^2)
+}
+ 
+j<-1
+for(j in 1:ncol(counts)){
+  z[j] <-1/s[j]
+   zip <- (qip/ncol(counts))* sum(z)
+
+}
+
+vp <- wip*(qip)-zip
 # i <- 1
 # length(counts)
 # x <-c(2,1,4)
