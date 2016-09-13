@@ -1559,9 +1559,11 @@ gm_mean = function(x, na.rm=TRUE){
 }
 gm <- vector()
 s <- vector()
+
 x <- vector()
 z <- vector()
 vp <- vector()
+
 j <- 1
 for (j in 1:ncol(counts)){
   gm[j] <-gm_mean(counts[,j])
@@ -1578,6 +1580,9 @@ j <- 1
 
 for(j in 1:ncol(counts)){
   wip[j] <- 1/(ncol(counts)-1) * sum((counts[,j]/s[j]-qip)^2)
+
+  wip <- 1/(ncol(counts)-1) * sum((counts[,j]/s[j]-qip)^2)
+
 }
  
 j<-1
@@ -1587,7 +1592,11 @@ for(j in 1:ncol(counts)){
 
 }
 
+
 vp <- wip*(qip)-zip
+
+
+
 # i <- 1
 # length(counts)
 # x <-c(2,1,4)
