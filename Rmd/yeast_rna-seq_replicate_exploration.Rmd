@@ -1559,6 +1559,7 @@ cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
  
 ```{r}
 ## Compute the median, mean and variance for each gene
+x <- 0
 gm_mean = function(x, na.rm=TRUE){
 ##  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x)) ## Attention, this formula is from internet and it is false, because Zero values are discarded !!!
   (prod(x))^(1/length(x))
@@ -1575,7 +1576,9 @@ wip <- vector()
 ## Compute the "pseudo-reference sample", i.e. for each gene, take the geometric mean of all th e samples
 pseudoref.sample <- apply(counts.all, 1, gm_mean)
 
+median((counts.all/pseudoref.sample), na.rm =TRUE)
 
+size.factor <- apply(counts.all, 1, median((counts.all/pseudoref.sample), na.rm =TRUE) )
 ## Copute the size factor for each sample (column)
 
 j <- 1
