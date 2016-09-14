@@ -1559,28 +1559,72 @@ cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
  
 ```{r}
 ## Compute the median, mean and variance for each gene
-x <- 0
+## TODO FOR MUSTAFA (later, with me): document this functin with the roxygen2 documentation system
 gm_mean = function(x, na.rm=TRUE){
 ##  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x)) ## Attention, this formula is from internet and it is false, because Zero values are discarded !!!
-  (prod(x))^(1/length(x))
+  
+  ## If there is at least one zero value, the geometric mean is zero
+  if (sum(x==0) > 0) {
+    return(0)
+  }
+  
+  ## Negative values are not compatible with the geometric mean, because one would need to compute the root of a negative number
+  if (sum(x < 0) > 0) {
+    warning("Cannot compute geometric mean for a vector with negative values. ")
+    return(NA)
+  }
+  
+  ## Filter NA values if specified
+  if (na.rm) {
+    x <- na.omit(x)
+  }
+  
+  exp(mean(log(x)))
+  
+  #  (prod(x))^(1/length(x)) ## Not working if the product exceeds max float
 }
 
 ## Initialize the vectors
-gm <- vector() ## geometric mean of counts across samples for each gene
 s <- vector()  ## Size factor for sample normalization
-x <- vector()
-z <- vector()
+#x <- vector()  ## 
+z <- vector()  ## 
 vp <- vector()
 wip <- vector()
 
 ## Compute the "pseudo-reference sample", i.e. for each gene, take the geometric mean of all th e samples
-pseudoref.sample <- apply(counts.all, 1, gm_mean)
+# gm <- vector() ## Geometric mean of counts across samples for each gene
+counts.plus.one <- (counts.all + 1) ## To circumvent the absorbing effect of zero counts, add 1 to each count (tricky but this is hat everybody does)
+dim(counts.plus.one)
+range(counts.plus.one)
 
-median((counts.all/pseudoref.sample), na.rm =TRUE)
+## Compute the "pseudo-reference" sample, i.e. a vector with one value per gene, where the value is the geometrc mean of counts for each gene, across all the samples
+mean.per.gene.geom <- apply(counts.plus.one, 1, gm_mean)
+length(mean.per.gene.geom)
+table(is.infinite(mean.per.gene.geom))
 
-size.factor <- apply(counts.all, 1, median((counts.all/pseudoref.sample), na.rm =TRUE) )
-## Copute the size factor for each sample (column)
 
+## Compute and compare the geometic and arithmetic mean counts per gene
+mean.per.gene.arithm <- apply(counts.plus.one, 1, mean)
+plot(mean.per.gene.arithm, mean.per.gene.geom, log="xy", col="#BBBBBB", pch=".")
+grid()
+abline(a=0, b=1, col="red", lwd=1)
+
+## Compute the relative difference between geometric and arithmetic means
+mean.per.gene.rel.diff <- (mean.per.gene.arithm - mean.per.gene.geom) / (mean.per.gene.arithm)
+plot(mean.per.gene.arithm, mean.per.gene.rel.diff, log="xy")
+
+
+pseudoref.sample <- mean.per.gene.geom
+genewise.normalized.counts <- counts.plus.one
+for (c in 1:ncol(genewise.normalized.counts)) {
+  genewise.normalized.counts[,c] <- genewise.normalized.counts[, c] / pseudoref.sample
+}
+size.factor <- apply(genewise.normalized.counts, 2, median)
+barplot(size.factor, horiz = TRUE, las=1, cex.names =0.5)
+
+## Revised up to here with Jacques on 2016-09-14
+
+## Compute the size factor for each sample (column)
 j <- 1
 for (j in 1:ncol(counts.all)){
   gm[j] <- gm_mean(counts.all[,j])
