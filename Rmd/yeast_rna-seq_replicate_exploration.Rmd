@@ -258,7 +258,8 @@ if (sum(genes.wt != genes.snf2) > 0) {
 ## OK, it gives 0. 
 
 ## Merge the two count tables in a single table
-counts <- cbind(counts.wt, counts.snf2)
+counts.all <- cbind(counts.wt, counts.snf2)
+dim(counts.all)
 
 ## Prepare a sample description table
 ## THIS DOES NOT WORK BECAUSE THE COUNT TABLE CONTAINS 96 columns, i.e. one column per sample, WHEREAS THE sample mapping table contains 7 technical replicates per sample. 
@@ -266,7 +267,7 @@ counts <- cbind(counts.wt, counts.snf2)
 
 ## Sample description table
 sample.description <- data.frame(
-  row.names = names(counts),
+  row.names = names(counts.all),
   genotype = c(rep("WT", times=ncol(counts.wt)), 
                rep("SNF2", times=ncol(counts.snf2))),
   replicate = c(1:48, 1:48)
@@ -286,7 +287,7 @@ The tables *counts.wt* and *counts.snf2* contain the read counts per gene for th
 |----------|-------|---------|
 | WT | `r nrow(counts.wt)` |  `r ncol(counts.wt)` |
 | Snf2 | `r nrow(counts.snf2)` |  `r ncol(counts.snf2)` |
-| All | `r nrow(counts)` | `r ncol(counts)` |
+| All | `r nrow(counts.all)` | `r ncol(counts.all)` |
 | | |
 
 
@@ -295,7 +296,7 @@ The tables *counts.wt* and *counts.snf2* contain the read counts per gene for th
 We could use the function *summary()* to compute descriptie statistics for each column of the count table. 
 
 ```{r summary of  the counts}
-## summary(counts) ## This takes too much place for a report
+## summary(counts.all) ## This takes too much place for a report
 ```
 
 We can immediately draw some observations from these summaries. 
@@ -318,22 +319,22 @@ We would like to count the number of undetected genes per sample, i.e. genes hav
 
 ## Count the number of undetected genes for each sample
 message("Counting undetected genes per sample.")
-undetected.genes.per.sample <- apply(counts == 0, 2, sum)
+undetected.genes.per.sample <- apply(counts.all == 0, 2, sum)
 
 ## Count the number of samples where each gene has not been detected
 message("Counting undetected samples per gene.")
-undetected.samples.per.gene <- apply(counts == 0, 1, sum)
+undetected.samples.per.gene <- apply(counts.all == 0, 1, sum)
 hist(undetected.samples.per.gene, 
-     breaks=0:ncol(counts), col="grey", ylim=c(0,300),
+     breaks=0:ncol(counts.all), col="grey", ylim=c(0,300),
      main="Samples with zero counts per gene",
      xlab="Number of samples with 0 counts",
      ylab="Number of genes (truncated axis)"
   )
 
 ## JvH: THIS IS NOT WORKING: THE LOOP IS USED, BUT THE PLOTS ARE NOT GENERATED. TO CHECK LATER
-for (j in 1:ncol(counts)){
+for (j in 1:ncol(counts.all)){
   message("PROBLEM: no ggplot for sample nb ", j)
-   # ggplot(counts, aes(x = counts[,j])) + geom_histogram(fill = "#525252", binwidth = 2000)
+   # ggplot(counts.all, aes(x = counts.all[,j])) + geom_histogram(fill = "#525252", binwidth = 2000)
 }
 
 ```
@@ -372,9 +373,9 @@ However, we first must treate a problem: since many genes have 0 counts, the log
 message("Adding epsilon and computing log2-transformed counts")
 
 ## Compute log2-transformed counts
-## sum(counts == 0) ## Count the number of zero values
-counts.epsilon <- counts
-counts.epsilon[counts == 0] <- epsilon
+## sum(counts.all == 0) ## Count the number of zero values
+counts.epsilon <- counts.all
+counts.epsilon[counts.all == 0] <- epsilon
 counts.log2 <- log2(counts.epsilon)
 
 ```
@@ -411,7 +412,7 @@ Several methods have been proposed for this.
 
 Counts are converted to counts per million by a simple scaling rule. 
 
-We dispose of a raw count table containing `r nrow(counts)` rows (one row per gene) and `r ncol(counts)` columns (one column per sample). 
+We dispose of a raw count table containing `r nrow(counts.all)` rows (one row per gene) and `r ncol(counts.all)` columns (one column per sample). 
 
 Let us define $x_{i,j}$ as the count of reads for gene $i$ ($i^{th}$ row) in sample $j$ ($j^{th}$ column). 
 
@@ -488,7 +489,7 @@ $k'$ is the index of the "reference sample". Robinson and Oshlack indicate that 
 ```{r Robinson-Oshlack M value computation}
 
 ## The raw Y are problematic in the formula, but we can use Y + 1 instead (I think this is what Robinson and Oshlack do, but we have to check)
-Y <- counts + 1
+Y <- counts.all + 1
 
 ## Create an empty datagrame to store M values
 M <- data.frame(matrix(ncol=ncol(Y), nrow=nrow(Y)))
@@ -535,8 +536,8 @@ test.sample <- "SNF2.2"
 par(mfrow=c(2,2))
 
 ## Draw a scatter plot with the raw counts
-max.count <- max(c(counts[, ref.sample], counts[, test.sample]))
-plot(counts[, ref.sample], counts[, test.sample],
+max.count <- max(c(counts.all[, ref.sample], counts.all[, test.sample]))
+plot(counts.all[, ref.sample], counts.all[, test.sample],
      main="Raw count comparison",
      xlab=ref.sample,
      ylab=test.sample,
@@ -670,9 +671,9 @@ when we need the amount of variance is approximately the same across diffrent me
 ```{r}
 
 # library(DESeq2)
-# nrow(counts)
-# colData(counts)
-# dds<- counts[rowSums(counts)> 1,]
+# nrow(counts.all)
+# colData(counts.all)
+# dds<- counts.all[rowSums(counts.all)> 1,]
 # 
 # nrow(dds)
 # dds<-t(dds)
@@ -712,18 +713,18 @@ message("Computing summary statistics per sample")
 
 ## Collact sample-wise statistics in a data frame
 stats.per.sample <- data.frame(
-  mean = apply(counts, 2, mean),
-  sd = apply(counts, 2, sd),
-  var = apply(counts, 2, var),
-  min = apply(counts, 2, min),
-  median = apply(counts, 2, median),
-  max = apply(counts, 2, max),
-  sum = apply(counts, 2, sum),
-  IQR=apply(counts, 2, IQR)
+  mean = apply(counts.all, 2, mean),
+  sd = apply(counts.all, 2, sd),
+  var = apply(counts.all, 2, var),
+  min = apply(counts.all, 2, min),
+  median = apply(counts.all, 2, median),
+  max = apply(counts.all, 2, max),
+  sum = apply(counts.all, 2, sum),
+  IQR=apply(counts.all, 2, IQR)
 )
 
 selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99, 1)
-sample.quantiles <-  round(t(apply(counts, 2, quantile, selected.quantiles)), digits=1)
+sample.quantiles <-  round(t(apply(counts.all, 2, quantile, selected.quantiles)), digits=1)
 
 colnames(sample.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
 stats.per.sample <- cbind(stats.per.sample, sample.quantiles)
@@ -747,17 +748,17 @@ We will measure the library size for each sample of each genotye, and display th
 ```{r sequencing depth per sample}
 
 # ## counts
-# hist(log10(apply(counts, 2, sum)), breaks=50,
+# hist(log10(apply(counts.all, 2, sum)), breaks=50,
 #      main="Sequencing depth per sample", col="#DDEEFF", las=1, 
 #      xlab="log10(sum of counts per sample)", ylab="Number of samples", xlim=c(6.7,7.2))
-# print(counts[1000:1010,])
-# dim(counts) ## Check the dimensions of the count table. 
+# print(counts.all[1000:1010,])
+# dim(counts.all) ## Check the dimensions of the count table. 
 ## Result: 7125 rows (genes) and 96 columns (48 samples x 2 genotypes)
 
 ## boxplot showing the "library size", also called "sequencing depth" per sample
 message("Genering barplots")
 for (genotype in c("WT", "SNF2")) {
-  barplot(apply(counts[,sample.description$genotype == genotype], 2, sum), 
+  barplot(apply(counts.all[,sample.description$genotype == genotype], 2, sum), 
           horiz = TRUE,
           las=1, cex.names = 0.6,
           col=color.code[genotype],
@@ -767,7 +768,7 @@ for (genotype in c("WT", "SNF2")) {
 
 ```
 
-On the barplot, we notice that some libraries have a lower sequencing depth ("libsum") than other ones. For example, sample SNF2.39 totals `r sum(counts$SNF2.39)` reads whereas SNF2.48 only sums up to `r sum(counts$SNF2.48)`. These two sequencing depths thus differ by a factor two. For this reason, if we want to compute gene-wise statistics, we will need to normalize the counts in order to take into account these sample-wise differences in sequencing depth. 
+On the barplot, we notice that some libraries have a lower sequencing depth ("libsum") than other ones. For example, sample SNF2.39 totals `r sum(counts.all$SNF2.39)` reads whereas SNF2.48 only sums up to `r sum(counts.all$SNF2.48)`. These two sequencing depths thus differ by a factor two. For this reason, if we want to compute gene-wise statistics, we will need to normalize the counts in order to take into account these sample-wise differences in sequencing depth. 
 
 ### Exercise 2. Sample-wise standardization
 
@@ -780,11 +781,11 @@ b. Compare the scaling factors that would be applied with libsum and median-base
 message("Median-based normalization of counts per sample")
 
 ## Compute the median per column
-median.per.column <- apply(counts, 2, median)
+median.per.column <- apply(counts.all, 2, median)
 
 ## Compute the global median count for all the samples together
-median.count.allsamplestogether <- median(unlist(counts))
-#dim(counts)
+median.count.allsamplestogether <- median(unlist(counts.all))
+#dim(counts.all)
 
 ## Plot a histogram to show the widespread of the median count per sample
 hist(median.per.column, breaks=100, col="cyan")
@@ -815,7 +816,7 @@ for (genotype in c("WT", "SNF2")) {
     counts.mednorm.log2[,sample.description$genotype == genotype], 
     horizontal = TRUE, las=1, col=color.code[genotype],
     main=genotype, cex.axis=0.6, cex.label=0.8, 
-    xlab=paste(sep="", "median-based normalized log2(counts), with epsilon=", epsilon))
+    xlab=paste(sep="", "median-based normalized log2(counts.all), with epsilon=", epsilon))
 }
 
 ```
@@ -829,7 +830,7 @@ Plot an histogram of the raw counts (all the table) versus log2-transformed medi
 message("Distribution of count values, before and after normalization and log2")
 
 par(mfrow=c(1,2)) 
-hist(unlist(counts), 
+hist(unlist(counts.all), 
      breaks=20000, xlim=c(0,5000), 
      main="Raw counts", 
      xlab="Read counts per gene (truncated axis)", 
@@ -846,7 +847,7 @@ par(mfrow=c(1,1))
 
 This distribution does not look like any conventional distribution, but this is not surprizing. Indeed, each gene can be considered as a separate object for which we measure the level of expression in 2 different genotypes (wild-type and Snf2 mutant), and which follows its own distribution, with its own mean and dispersion. 
 
-The histograms above can thus be understood as a mixture of `r nrow(counts)` (number of genes) times 2 (number of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
+The histograms above can thus be understood as a mixture of `r nrow(counts.all)` (number of genes) times 2 (number of genotypes) independent distributions, each of which is represented by 48 observations (replicates). 
 
 ### Exercise 4. Statistics per gene (rows of the count table)
 
@@ -861,13 +862,13 @@ message("Computing gene-wise statistics")
 
 ## Compute gene-wise statistics
 stats.per.gene <- data.frame(
-  mean= apply(counts, 1, mean),
-  sd= apply(counts, 1, sd),
-  var= apply(counts, 1, var),
-  min= apply(counts, 1, min),
-  median= apply(counts, 1, median),
-  max= apply(counts, 1, max),
-  IQR= apply(counts, 1, IQR)
+  mean= apply(counts.all, 1, mean),
+  sd= apply(counts.all, 1, sd),
+  var= apply(counts.all, 1, var),
+  min= apply(counts.all, 1, min),
+  median= apply(counts.all, 1, median),
+  max= apply(counts.all, 1, max),
+  IQR= apply(counts.all, 1, IQR)
   )
 
 ## Compute the log2-transformed counts after median-based standardization
@@ -875,7 +876,7 @@ counts.mednorm.log2 <- log2(counts.mednorm)
 
 selected.quantiles <- c(0,0.05,0.1,0.25,0.50,0.75,0.9,0.95,0.99,1)
 
-gene.quantiles <-  round(t(apply(counts, 1, quantile, selected.quantiles)), digits=1)
+gene.quantiles <-  round(t(apply(counts.all, 1, quantile, selected.quantiles)), digits=1)
 dim(gene.quantiles)
 colnames(gene.quantiles) <- paste(sep="", "Q", sprintf("%.2f",selected.quantiles))
 colnames(gene.quantiles)
@@ -935,7 +936,7 @@ Note that the arithmetic mean of the logarithms is equivalent to the logarithm o
 
 $$\frac{1}{n}\sum_{j=1}^{n}{log_2(x_{i,j})} = log_2(\sqrt[n]{\prod_{j=1}^{n}{x_{i,j}}})$$
 
-```{r fig.width=7, fig.height=7, fig.cap="Comparison of mean read log2(counts) per gene between the two genotypes. Note that this drawing is very preliminary, since we did not yet normalize the libraries. It is just to get a rough idea. "}
+```{r fig.width=7, fig.height=7, fig.cap="Comparison of mean read log2(counts.all) per gene between the two genotypes. Note that this drawing is very preliminary, since we did not yet normalize the libraries. It is just to get a rough idea. "}
 
 ## Compute mean counts per sample class for each gene
 stats.per.gene$WT.mednorm.log2.mean <- apply(counts.mednorm.log2[, sample.description$genotype=="WT"], 1, mean)
@@ -968,7 +969,7 @@ We will now create a DGEList object to hold our read counts. DGEList is an examp
 
 ```{r DGEList_example}
 ## Cast the count table into an object that can be used by edgeR. This object contains the count table + some additional attributes describing the samples
-dgList <- DGEList(counts=counts , genes = rownames(counts)) 
+dgList <- DGEList(counts=counts.all, genes = rownames(counts.all)) 
 
 # print(dgList) ## Just for debugging, not to print in the output
 # dgList$samples
@@ -982,7 +983,7 @@ attributes(dgList)
 ## Check that the cds$counts contains the same info as in your original count table
 dgList$counts[1000:1010, 1:5]
 print(dgList$counts[1:10, 1:5])
-dim(counts)
+dim(counts.all)
 dim(dgList$counts)
 dim(dgList) ## For convenience, the DGEList object has a method "dim" that returns the dimension of the count field > gives the same result as cds$count)
 
@@ -1040,7 +1041,7 @@ print(paste(sep="", "Percent of values > 1CPM: ", round(digits=1, 100*countcheck
 
 ## show the process from counts to filtered genes
 
-Raw.count.gene = kable(counts[1:10, ], caption = "Raw counts per gene in each sample.")
+Raw.count.gene = kable(counts.all[1:10, ], caption = "Raw counts per gene in each sample.")
 count.million.read = kable(countsPerMillion[1:10, ], caption = "Counts per million reads (normalized counts).")
 counts.million.read.normalized = kable(countcheck[1:10, ], caption = "Counts per million reads (normalized counts).")
   
@@ -1136,14 +1137,14 @@ $$C_{j}= /frac{10}{D_{j}}$$
 
 
 ## Compute CPMS by deividing each column by its sum
-cpm <- data.frame(matrix(ncol=ncol(counts), nrow=nrow(counts))) ## Instantiate a CPM data frame with NA values
-row.names(cpm) <- row.names(counts)
-names(cpm) <- names(counts)
+cpm <- data.frame(matrix(ncol=ncol(counts.all), nrow=nrow(counts.all))) ## Instantiate a CPM data frame with NA values
+row.names(cpm) <- row.names(counts.all)
+names(cpm) <- names(counts.all)
 # View(cpm)
 
 ## Compute the normalized counts (CPM) for each sample (column)
 for (j in 1:ncol(cpm) ){
-  cpm[,j] <- 1e+6 * counts[,j] / sum(counts[,j])
+  cpm[,j] <- 1e+6 * counts.all[,j] / sum(counts.all[,j])
 }
 
 # View(cpm)
@@ -1172,9 +1173,9 @@ libsum.k.wt.all <- sum(libsum.k.wt.per.sample)
 libsum.k.snf2.per.sample <- apply(counts.snf2, 2,sum)
 libsum.k.snf2.all <- sum(libsum.k.snf2.per.sample)
 
-# for(j in 1:ncol(counts)) {
+# for(j in 1:ncol(counts.all)) {
 #       # for (j in 1:ncol(counts.snf2)){
-#      for(i in 1:nrow(counts)){
+#      for(i in 1:nrow(counts.all)){
 #             Mg[i] <-log2((counts.wt[i,j]/libsum.k.wt.per.sample[j])/(counts.snf2[i,j]/libsum.k.snf2.per.sample[j]))
 #             Ag[i] <- 1/2*(log2((counts.wt[i,j]/libsum.k.wt.all[j])*(counts.snf2[i,j]/libsum.k.snf2.all[j])))
 #      # }
@@ -1182,11 +1183,11 @@ libsum.k.snf2.all <- sum(libsum.k.snf2.per.sample)
 # }
 
 
-Mg <-function(counts) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf2.all))
-Ag <- function (counts) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsum.k.snf2.all)))
+Mg <-function(counts.all) log2((counts.wt/libsum.k.wt.all)/(counts.snf2/libsum.k.snf2.all))
+Ag <- function (counts.all) 1/2*(log2((counts.wt/libsum.k.wt.all)*(counts.snf2/libsum.k.snf2.all)))
 
-Mg <-apply(as.matrix(counts) ,2, Mg)
-Ag <- apply(counts, 2, Ag)   
+Mg <-apply(as.matrix(counts.all) ,2, Mg)
+Ag <- apply(counts.all, 2, Ag)   
 # plot(Mg,Ag)
 
 ```
@@ -1244,7 +1245,7 @@ We will specify the design of our Matrix, which describes the setup of our exper
 
 ## Define a vector of the same length as the number of samples, indicating the group of each sample (2 groups: WT and SNF2)
 
-#attributes(counts)
+#attributes(counts.all)
 sample.type <- rep("WT", ncol(dgList)) ## Initialize the vector with the same value (WT) for all the entries (this is temporary)
 
 #sample.type 
@@ -1371,7 +1372,7 @@ The first dispersion type to calculate is the common dispersion. **in the common
 
 ```{r now we Estimating Dispersions }
 ## to calculate a commen dispersion, each gene gets assigned the same dispersion estimate 
-cds <-DGEList(counts)
+cds <-DGEList(counts.all)
 cds <- estimateCommonDisp( cds)
 names(cds)
 cds$common.dispersion 
@@ -1391,6 +1392,8 @@ summary(cds$tagwise.dispersion)
 
 
 ```{r Plotting the Mean-Variance relationship }
+## Draw a mean/variance plot using the edgeR::meanVarPlot() function.
+## Note: edgeR uses a different normalization method than DESeq2, so the plot is different.
 meanVarPlot <- plotMeanVar(cds, show.raw.vars = TRUE ,
                            show.tagwise.vars = TRUE   ,
                            show.binned.common.disp.vars = TRUE ,
@@ -1404,20 +1407,17 @@ meanVarPlot <- plotMeanVar(cds, show.raw.vars = TRUE ,
 
 ```
 
-```{r Visualizing Resulats}
-par(mfrow=c(3 ,1))
-#hist()
-```
 
 ```{r Differential Expression of RNA-Seq data at the Gene level by using DESeq package}
 ## Now, we will creat the central data structure namely CountDataSet by DESeq Package
-cds = newCountDataSet(counts,sample.description$replicate)
-cds
+cds <- newCountDataSet(counts.all,sample.description$replicate)
+summary(cds)
+print(cds)
 
 ## Normalisation, we will estimate the effective library size which sometimes also called (Normalisation), the effective library size information calling the Size factors Vector.
 
 # In other words, Now we estimate the **EFFECTIVE LIBRARY SIZE**, Even though there is no relation to normality or a normal distribution, where we can take effective library size information from size factors vector  
-cds = estimateSizeFactors(cds)
+cds <- estimateSizeFactors(cds)
 sizeFactors(cds)
 
 ## this method is usefull for visualization our count values which are brought the common scale by dividing each column of the count table by the size factor for this column.
@@ -1443,7 +1443,9 @@ $$v = s \mu +\alpha{s^2} \mu^2$$,
 
 
 ```{r}
-cds = estimateDispersions(cds) ## this command to estimate the dispersion.
+## Plot "diespersion" (i.e. the square of the variation coefficient) 
+
+cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
 ## this function will performs three steps. 
 # * it estimate a dispersion value for each gene.
 # * it fits a curve through the estimates.
@@ -1464,15 +1466,13 @@ fData(cds)[c(1,3,4,5,6,7,8,9,10),]
 # Differential analysis with DESeq2
 
 ```{r}
-
-
 ## Define a vector with the conditions per sample
 condition <- as.vector(sample.description$genotype)
 
 
 ## Create a DESeqDataSet object from the count table + conditions
 deseq2.dds <- DESeqDataSetFromMatrix(
-  countData = counts, 
+  countData = counts.all, 
   colData = DataFrame(condition),
   ~ condition)
 
@@ -1522,13 +1522,18 @@ Next time we discuss about the interpretation of the differentially expressed ge
 # Estimation of variance
 
 
-In DESeq, the inference relies on the estimation of the typical relationship between the data's viaraince (the data dispersion) and their mean. where is ** the dispersion** can understood as the square of the coefficient of Biological variation, so, if a gene's expression typically differs from replicate to replicate sample by 20%thence gene's dispersion is 0.2 power 2 = 0.04.
-we can Note the Variance between counts is the sum of two components: the sample-to-sample variation and uncertinity in measuring a concentration by counting reads.
-this emply us to know shot nois or poisson noise, which is the dominating noise source for lowly expressed genes.
-The former dominates for highly expressed genes is the sum of both, shot noise and dispersion, is considered in the differential expression inference.$$v of count vaue is modelled as
+In DESeq, the inference relies on the estimation of the typical relationship between the data's variance (the data dispersion) and their mean, where  ** the dispersion** can be understood as the square of the coefficient of Biological variation, so, if a gene's expression typically differs from replicate to replicate sample by 20%, thence gene's dispersion is 0.2 power 2 = 0.04.
 
-***** the variance 
-$$v = \sm \sum $ m$$($j^{th}$ column),
+We can note that the variance between counts is the sum of two components: the sample-to-sample variation and uncertinity in measuring a concentration by counting reads.
+
+This implies for us to estimate shot noise and Poisson noise, the latter being the dominating noise source for lowly expressed genes, whereas the former dominates for highly expressed genes. The sum of both, shot noise and dispersion, is considered in the differential expression inference. $v$ of count vaule is modelled as <font color="red">... ???</font>
+
+#### The variance 
+
+<font color="red">Mustafa: I think there is a problem with the formula below. Please check it</font>
+
+<-!!$$v = \sm \sum $ m$$($j^{th}$ column),-->
+
 * where M is expected normalized count value (estimated by the average normalised count value).
 * s is the sive factor for the sample under considaration.
 * is the dispertion value for the gene under consideration.
@@ -1553,42 +1558,48 @@ cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
  $K_{ij}$ is the count value 
  
 ```{r}
-
+## Compute the median, mean and variance for each gene
 gm_mean = function(x, na.rm=TRUE){
-  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x))
+##  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x)) ## Attention, this formula is from internet and it is false, because Zero values are discarded !!!
+  (prod(x))^(1/length(x))
 }
-gm <- vector()
-s <- vector()
 
+## Initialize the vectors
+gm <- vector() ## geometric mean of counts across samples for each gene
+s <- vector()  ## Size factor for sample normalization
 x <- vector()
 z <- vector()
 vp <- vector()
+wip <- vector()
+
+## Compute the "pseudo-reference sample", i.e. for each gene, take the geometric mean of all th e samples
+pseudoref.sample <- apply(counts.all, 1, gm_mean)
+
+
+## Copute the size factor for each sample (column)
 
 j <- 1
-for (j in 1:ncol(counts)){
-  gm[j] <-gm_mean(counts[,j])
-  s[j] <- median(counts[,j]/ gm[j])
+for (j in 1:ncol(counts.all)){
+  gm[j] <- gm_mean(counts.all[,j])
+  s[j] <- median(counts.all[,j]/ gm[j]) 
 }
 
 j<-1
-for(j in 1:ncol(counts)){
-  x[j] <-counts[,j]/s[j]
+for(j in 1:ncol(counts.all)){
+  x[j] <-counts.all[,j]/s[j]
 }
-qip <- 1/ncol(counts)* sum(x[j])
+qip <- 1/ncol(counts.all)* sum(x[j])
 
 j <- 1
-
-for(j in 1:ncol(counts)){
-  wip[j] <- 1/(ncol(counts)-1) * sum((counts[,j]/s[j]-qip)^2)
-
-  wip <- 1/(ncol(counts)-1) * sum((counts[,j]/s[j]-qip)^2)
-
+for(j in 1:ncol(counts.all)){
+  wip[j] <- 1/(ncol(counts.all)-1) * sum((counts.all[,j]/s[j]-qip)^2)
+  wip <- 1/(ncol(counts.all)-1) * sum((counts.all[,j]/s[j]-qip)^2)
 }
  
 j<-1
-for(j in 1:ncol(counts)){
+for(j in 1:ncol(counts.all)){
   z[j] <-1/s[j]
-   zip <- (qip/ncol(counts))* sum(z)
+   zip <- (qip/ncol(counts.all))* sum(z)
 
 }
 
@@ -1598,19 +1609,19 @@ vp <- wip*(qip)-zip
 
 
 # i <- 1
-# length(counts)
+# length(counts.all)
 # x <-c(2,1,4)
 # b <-prod(x,na.rm = TRUE)^(1/5)
 # 
-# m <-length(counts)
-# prod(counts[,i])^(1/m), na.rm = TRUE)
+# m <-length(counts.all)
+# prod(counts.all[,i])^(1/m), na.rm = TRUE)
 # 
-# for (i in 1:ncol(counts)){
-#   x[i]<- apply(counts, 2,  )
+# for (i in 1:ncol(counts.all)){
+#   x[i]<- apply(counts.all, 2,  )
 # }
 
-# for(i in 1:ncol(counts)){
- # k_iv<- apply(counts, 2, mean(log(counts)), na.rm = TRUE)   
+# for(i in 1:ncol(counts.all)){
+ # k_iv<- apply(counts.all, 2, mean(log(counts.all)), na.rm = TRUE)   
 # }
 ```
 
