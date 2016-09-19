@@ -1586,10 +1586,11 @@ gm_mean = function(x, na.rm=TRUE){
 
 ## Initialize the vectors
 s <- vector()  ## Size factor for sample normalization
-#x <- vector()  ## 
+x <- vector()  ## 
 z <- vector()  ## 
 vp <- vector()
 wip <- vector()
+gm <- vector()
 
 ## Compute the "pseudo-reference sample", i.e. for each gene, take the geometric mean of all th e samples
 # gm <- vector() ## Geometric mean of counts across samples for each gene
@@ -1605,13 +1606,13 @@ table(is.infinite(mean.per.gene.geom))
 
 ## Compute and compare the geometic and arithmetic mean counts per gene
 mean.per.gene.arithm <- apply(counts.plus.one, 1, mean)
-plot(mean.per.gene.arithm, mean.per.gene.geom, log="xy", col="#BBBBBB", pch=".")
+plot(mean.per.gene.arithm, mean.per.gene.geom, log="xy", col="#BACCFF", pch=".", title("Arithmetic and Geometric Means"), xlab = "Arithmatic Mean per Genes", ylab = "Geometric Mean per Genes" )
 grid()
 abline(a=0, b=1, col="red", lwd=1)
 
 ## Compute the relative difference between geometric and arithmetic means
 mean.per.gene.rel.diff <- (mean.per.gene.arithm - mean.per.gene.geom) / (mean.per.gene.arithm)
-plot(mean.per.gene.arithm, mean.per.gene.rel.diff, log="xy")
+plot(mean.per.gene.arithm, mean.per.gene.rel.diff, log="xy",title("The relative difference between Geometric and Arithmetic Means"), xlab = "Arithmetic Mean per Genes ", ylab = "The relatives Differences Between Arithmetic and Geometric Means" ) 
 
 
 pseudoref.sample <- mean.per.gene.geom
@@ -1624,34 +1625,26 @@ barplot(size.factor, horiz = TRUE, las=1, cex.names =0.5)
 
 ## Revised up to here with Jacques on 2016-09-14
 
-## Compute the size factor for each sample (column)
-j <- 1
-for (j in 1:ncol(counts.all)){
-  gm[j] <- gm_mean(counts.all[,j])
-  s[j] <- median(counts.all[,j]/ gm[j]) 
+## to estimate the Mean"qip", we an do the follwoing 
+c <- 1
+for (c in 1:ncol(genewise.normalized.counts)){
+  genewise.normalized.counts[,c] <- genewise.normalized.counts[,c] / size.factor
+  abun.fragments.from.genes.under.condition <- genewise.normalized.counts[,c]/ ncol(genewise.normalized.counts)
+}
+  
+
+## to calculate the sample variances on common scale:
+c <- 1
+for (c in 1:ncol(genewise.normalized.counts)){
+    genewise.normalized.counts[,c] <- ((genewise.normalized.counts[,c] / size.factor )- abun.fragments.from.genes.under.condition)^2
+  sample.variance <- genewise.normalized.counts[,c]/ (ncol(genewise.normalized.counts)-1)
 }
 
-j<-1
-for(j in 1:ncol(counts.all)){
-  x[j] <-counts.all[,j]/s[j]
-}
-qip <- 1/ncol(counts.all)* sum(x[j])
-
-j <- 1
-for(j in 1:ncol(counts.all)){
-  wip[j] <- 1/(ncol(counts.all)-1) * sum((counts.all[,j]/s[j]-qip)^2)
-  wip <- 1/(ncol(counts.all)-1) * sum((counts.all[,j]/s[j]-qip)^2)
-}
- 
-j<-1
-for(j in 1:ncol(counts.all)){
-  z[j] <-1/s[j]
-   zip <- (qip/ncol(counts.all))* sum(z)
-
+c <- 1
+for (c in 1:ncol(genewise.normalized.counts)){
+ zip <- (abun.fragments.from.genes.under.condition/ncol(genewise.normalized.counts))* (1/ size.factor[c])
 }
 
-
-vp <- wip*(qip)-zip
 
 
 
