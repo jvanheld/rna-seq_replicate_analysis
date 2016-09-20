@@ -1557,32 +1557,82 @@ cds <- estimateDispersions(cds) ## this command to estimate the dispersion.
  $S_{j}$ is size factor 
  $K_{ij}$ is the count value 
  
-```{r}
+```{r GeomMean}
 ## Compute the median, mean and variance for each gene
 ## TODO FOR MUSTAFA (later, with me): document this functin with the roxygen2 documentation system
-gm_mean = function(x, na.rm=TRUE){
+GeomMean <- function(x, na.rm=FALSE) {
 ##  exp(sum(log(x[x > 0]), na.rm=na.rm) / length(x)) ## Attention, this formula is from internet and it is false, because Zero values are discarded !!!
-  
-  ## If there is at least one zero value, the geometric mean is zero
-  if (sum(x==0) > 0) {
-    return(0)
-  }
-  
-  ## Negative values are not compatible with the geometric mean, because one would need to compute the root of a negative number
-  if (sum(x < 0) > 0) {
-    warning("Cannot compute geometric mean for a vector with negative values. ")
-    return(NA)
-  }
   
   ## Filter NA values if specified
   if (na.rm) {
     x <- na.omit(x)
   }
   
+  ## If there is at least one zero value, the geometric mean is zero
+  if (sum(x==0, na.rm=TRUE) > 0) {
+    return(0)
+  }
+  
+  ## Negative values are not compatible with the geometric mean, because one would need to compute the root of a negative number
+  if (sum(x < 0, na.rm=TRUE) > 0) {
+    stop("Cannot compute geometric mean for a vector with negative values. ")
+  }
+  
+  ## Warning: the "naive" way to compute the geometric mean leads rapidly to Inf, 
+  ## because the product of all values can exceeed the maximal floating point 
+  ## number. For this reason, we do the computation on log-transformed values. 
+  ## We first compute the arithmetic mean of log-transformed values, and then 
+  ## take the exponential of this mean. 
   exp(mean(log(x)))
   
+  ## Just for validation, the following code should give the same result when 
+  ## the product of the values does not exceed MAXFLOAT. 
   #  (prod(x))^(1/length(x)) ## Not working if the product exceeds max float
 }
+
+```
+
+```{r GeomMean_test}
+## Unit testing for the GeomMean() function: generate some representative vectors of
+## values and compute their geometric mean
+
+## Test 1: a small vector of strictly positive real values
+x <- rchisq(n=10, df=3)
+print(x)
+print(prod(x)^(1/length(x))) ## Straight computation of the geometric mean
+print(GeomMean(x)) ## Computation with our function should give the same result
+
+## Test 2: include NA values in the vector
+x <- c(rchisq(n=10, df=3), NA, NA)
+print(x)
+print(prod(x)^(1/length(x))) ## Straight computation of the geometric mean
+print(GeomMean(x)) ## Computation with our function should give the same result
+
+## Test 3: include NA values in the vector
+x <- c(rchisq(n=10, df=3), NA, NA)
+print(x)
+print(prod(x, na.rm = TRUE)^(1/length(na.omit(x)))) ## Straight computation of the geometric mean
+print(GeomMean(x, na.rm = TRUE)) ## Computation with our function should give the same result
+
+## Test 4: show that GeomMean() circumvents a problem with product of many values >1 
+## exceeding max floating point number
+x <- c(rchisq(n=1000, df=12))
+print(x)
+print(prod(x)^(1/length(x))) ## Straight computation of the geometric mean
+print(GeomMean(x)) ## Computation with our function should give the same result
+
+## Test 5: show that GeomMean() circumvents a problem with product of many 
+## values < 1 leading to 0 (another limitation of floating point). 
+x <- c(rchisq(n=1000, df=1))
+print(x)
+print(prod(x)^(1/length(x))) ## Straight computation of the geometric mean
+print(GeomMean(x)) ## Computation with our function should give the same result
+
+
+```
+
+
+```{r}
 
 ## Initialize the vectors
 s <- vector()  ## Size factor for sample normalization
@@ -1599,20 +1649,27 @@ dim(counts.plus.one)
 range(counts.plus.one)
 
 ## Compute the "pseudo-reference" sample, i.e. a vector with one value per gene, where the value is the geometrc mean of counts for each gene, across all the samples
-mean.per.gene.geom <- apply(counts.plus.one, 1, gm_mean)
+mean.per.gene.geom <- apply(counts.plus.one, 1, GeomMean)
 length(mean.per.gene.geom)
 table(is.infinite(mean.per.gene.geom))
 
 
 ## Compute and compare the geometic and arithmetic mean counts per gene
 mean.per.gene.arithm <- apply(counts.plus.one, 1, mean)
-plot(mean.per.gene.arithm, mean.per.gene.geom, log="xy", col="#BACCFF", pch=".", title("Arithmetic and Geometric Means"), xlab = "Arithmatic Mean per Genes", ylab = "Geometric Mean per Genes" )
-grid()
-abline(a=0, b=1, col="red", lwd=1)
-
+plot(mean.per.gene.arithm, mean.per.gene.geom, log="xy", col="#6688FF", pch=".",
+     title("Arithmetic and Geometric Means"), 
+     xlab = "Arithmatic Mean per Genes", 
+     ylab = "Geometric Mean per Genes",
+     panel.first=c(grid(),
+                   abline(a=0, b=1, col="red", lwd=1)))
+                   
 ## Compute the relative difference between geometric and arithmetic means
 mean.per.gene.rel.diff <- (mean.per.gene.arithm - mean.per.gene.geom) / (mean.per.gene.arithm)
-plot(mean.per.gene.arithm, mean.per.gene.rel.diff, log="xy",title("The relative difference between Geometric and Arithmetic Means"), xlab = "Arithmetic Mean per Genes ", ylab = "The relatives Differences Between Arithmetic and Geometric Means" ) 
+plot(mean.per.gene.arithm, mean.per.gene.rel.diff, 
+     log="xy",
+     title("The relative difference between Geometric and Arithmetic Means"), 
+     xlab = "Arithmetic Mean per Genes ", 
+     ylab = "The relatives Differences Between Arithmetic and Geometric Means" ) 
 
 
 pseudoref.sample <- mean.per.gene.geom
@@ -1621,17 +1678,60 @@ for (c in 1:ncol(genewise.normalized.counts)) {
   genewise.normalized.counts[,c] <- genewise.normalized.counts[, c] / pseudoref.sample
 }
 size.factor <- apply(genewise.normalized.counts, 2, median)
-barplot(size.factor, horiz = TRUE, las=1, cex.names =0.5)
+barplot(size.factor, horiz = TRUE, las=1, cex.names =0.5,
+        col=sample.description$color)
+
+## On the barplot, we get the impressio that the WT size factors are generally smaller
+## than the SNF2 size factors. We can test this with a mean comparison test.
+## We cannot be sure that the data is normal, but since we have relatively large sample sizes (48 samples in each group) we coulduse the t test, since it is robust to non-normality by virtue of the central limit theorem. 
+size.factor.WT <- size.factor[sample.description$genotype == "WT"]
+size.factor.SNF2 <- size.factor[sample.description$genotype == "SNF2"]
+mean(size.factor.WT)
+mean(size.factor.SNF2)
+t.test(x = size.factor.WT, y = size.factor.SNF2, var.equal=TRUE) ## Run Student t-test, assuming variance equality
+t.test(x = size.factor.WT, y = size.factor.SNF2, var.equal=FALSE) ## Run Welch t-test, which does not assume variance equality
+## Welch and Student t-tests lead to the same conclusions: for some reason, the mean size factors are significantly different between the WT and the SNF2 samples. We should come back to this later, in order to understand it. Would it be possible that the WT and SNF2 libraries had different sequencing depths?
+
 
 ## Revised up to here with Jacques on 2016-09-14
 
-## to estimate the Mean"qip", we an do the follwoing 
+## Compute the normalized counts: for each sample (column), 
+## divide the counts by the size factor.
+c <- 1
+counts.norm.deseq1 <- counts.plus.one
+for (c in 1:ncol(counts.norm.deseq1)){
+  counts.norm.deseq1[,c] <- counts.norm.deseq1[,c] / size.factor[c]
+}
+## Check the normalized counts with a boxplot
+boxplot(log2(counts.plus.one), horizontal=TRUE, col=sample.description$color, las=1,
+        main="Before normalization log2(k+1)")
+boxplot(log2(counts.norm.deseq1), horizontal=TRUE, col=sample.description$color, las=1,
+        main="After normalization log2((k+1)))/s)")
+
+## Compute the mean counts per gene for each condition
+mean.per.gene.deseq1 <- data.frame(
+  WT = apply(counts.norm.deseq1[, sample.description$genotype=="WT"], 1, mean),
+  SNF2 = apply(counts.norm.deseq1[, sample.description$genotype=="SNF2"], 1, mean)
+)
+## Plot a comparison of log2-transformed mean counts per gene beteen WT and SNF2 genotypes
+plot(log2(mean.per.gene.deseq1), las=1,
+     col="#BBBBBB",
+     main="log2-transformed mean counts per gene",
+     panel.first=c(grid()))
+abline(a=0, b=1) ## Plot a diagonal
+text(4,13, "over-expressed", pos=4)
+text(11,3, "under-expressed", pos=4)
+
+
+## Revised by JvH till here on 2016-09-20
+
 c <- 1
 for (c in 1:ncol(genewise.normalized.counts)){
   genewise.normalized.counts[,c] <- genewise.normalized.counts[,c] / size.factor
   abun.fragments.from.genes.under.condition <- genewise.normalized.counts[,c]/ ncol(genewise.normalized.counts)
 }
   
+## to estimate the Mean"qip", we an do the follwoing 
 
 ## to calculate the sample variances on common scale:
 c <- 1
