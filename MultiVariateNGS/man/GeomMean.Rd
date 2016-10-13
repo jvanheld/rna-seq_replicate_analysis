@@ -60,4 +60,7 @@ print(x)
 print(prod(x)^(1/length(x))) # Straight computation of the geometric mean
 print(GeomMean(x)) # Computation with our function should give the same result
 }
+\author{
+Jacques van Helden <jacques.van-helden@univ-amu.fr> and Mustafa AbuElQumsan <mustafa.ABUELQUMSAN@ETU.UNIV-AMU.FT>
+}
 

@@ -1,6 +1,7 @@
 #' @title Geometric mean of a vector
 #'
-#' @authors Jacques van Helden and Mustafa AbuElQumsan
+#' @author Jacques van Helden  \email{jacques.Van-Helden@@univ-amu.fr},
+#'         Mustafa AbuElQumsan  \email{Mustafa.ABUELQUMSAN@@etu.univ-amu.fr}
 #'
 #' @description \code{GeomMean} computes the geometric mean of a vector of numerical
 #' values, using a robust implementation: (1) NA values are optionally removed;
@@ -14,6 +15,9 @@
 #' @return a numerical value with the geometric mean of the input vector.
 #' If the input data contains NA values and the na.rm option is not activated,
 #' the function returns NA.
+#' @name  GeomMean
+#' @docType  package
+#' @useDynLib roxygene2
 #' @examples
 #' # Use cases for the GeomMean() function: generate some representative vectors of
 #' # values and compute their geometric mean
