@@ -1,0 +1,703 @@
+---
+title: "Exploring and Analysis lesional psoriasis, with RNA-Seq data"
+author: "Mustafa ABUELQUMSAN"
+
+output:
+  html_document:
+    fig_caption: yes
+    highlight: zenburn
+    theme: cerulean
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    fig_caption: yes
+    highlight: zenburn
+    toc: yes
+    toc_depth: 3
+  word_document: default
+date: '`r Sys.Date()`'
+---
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+
+# Introduction about Lesional Psoriatic
+
+```{r knitr_setup, include=FALSE,  eval=TRUE, echo=FALSE, warning=FALSE}
+
+library(knitr)
+knitr::opts_chunk$set(echo=FALSE, eval=TRUE, cache=FALSE, message=FALSE, warning=FALSE, comment = "")
+```
+
+```{r load_libraries}
+#Load required BioConductor libraries qnd install them if necessary
+if (!require("qvalue")) {
+  source("https://bioconductor.org/biocLite.R")
+  biocLite("qvalue")
+  install.packages("knitr")
+  library(qvalue)
+  library(knitr)
+}
+
+```
+
+Psoriasis is a chronic inflammatory disease of the skin and joints, we will use the RNA-Seq based analysis of the psoriatic trascriptome to revealed a large number of differentially experssed genes(DEGs) in the lesional skin.we have case-control comparisons in the lesional and normal skin from the same individual this is in the negative control.Moreover, we will study the non-lesional psoriatic vs. normal skin.
+Here will we RNA-Seq have more accuracy and precision. we will identifies unmapped trascripts and alternative spicing. and markedly increases the dynamic range detected.
+
+where our working with DNA sequencing(RNA-seq), we generate so many data that, without the help of computers, would be incomprehensible to the human. The transcriptome analysis characterize all transcriptional activity (coding and non-coding), focus on a subset of relevant target genes and transcripts, or profile thousands of genes at once to create a global picture of cell funtion. Li and coworkers [-@Li:2014dp] used RNA-seq to characterize the transcriptome of 92 skin samples of people suffering from psoriasis, and 82 control sample.
+
+# The Goal from this report 
+1. **Detection and interpretation of differentially expressed genes:** run a statistical analysis of the read counts, in order to detect differentially expressed genes (**DEG**) between psoriasis and control samples [@Li:2014dp], and to study the functional associations of these genes, and provide a biological interpretation of these results. 
+
+2. **Methodological evaluation:** 
+
+    a. **Robusntess analysis:** analyse the impact of individual particularities of the patients/controls, and measure the impact of the sample size by applying a sub-sampling approach. 
+
+    b. **Negative control:** check the reliability of the DEG detection method (DESeq2) by running the same analysis with two subset of samples belonging to the same group. 
+
+
+****************************************************************
+
+# 1. Loading the dataset psoriasis:
+First, we have to load the psoriasis dataset and check the contents.
+```{r Psoriasis_Table}
+
+# Download data files from the my github 
+url.counts <- "https://raw.githubusercontent.com/jvanheld/rna-seq_replicate_analysis/master/counts_all_sample_header"
+
+#url.expDesign <- "https://raw.githubusercontent.com/jvanheld/rna-seq_replicate_analysis/master/counts_all_sample_pheno.tab"
+
+## Local paths
+dir.psoriasis <- ("~/ASG-report")
+dir.counts <- file.path(dir.psoriasis, "data")
+file.counts <- file.path(dir.counts, "counts.txt")
+
+# file.expDesign <- file.path(dir.counts, "expDesign.txt")
+
+## Create a directory to download the dataset if it does not exist
+dir.create(dir.counts, showWarnings = FALSE, recursive = TRUE)
+
+## Download the data files if required
+if (!file.exists(file.counts)) {
+  message("Downloading count table from ", url.counts)
+  download.file(url=file.path(url.counts), destfile = file.counts)
+}
+
+# Load the count table
+count.table <- read.table(file=file.counts, sep="\t", header=TRUE, row.names=1)
+# View(count.table)
+# dim(count.table)
+names(count.table) <- sub(pattern="_count.txt$", replacement = "", names(count.table))
+names(count.table) <- sub(pattern="__", replacement = "_", names(count.table))
+
+kable(count.table[sample(1:nrow(count.table), size = 6),1:2],
+      caption = "**Table: Contents of Psoriasis table ** We only display a random selection of 2 samples and 6 rows. ")
+
+```
+
+The count table contains `r nrow(count.table)` rows and `r ncol(count.table)` columns.
+
+# 2. Loading the phenotypic data:
+
+```{r Pheno_Table}
+
+##  we will try to generate a "pheno" table (description of each sample) from the headers of the count table. 
+
+
+## Load the limma library which implement strplit2, much more convenient than strsplit
+if (!require(limma)) {
+  source("http://bioconductor.org/biocLite.R")
+  biocLite("limma")  
+}
+library(limma)
+
+psoriasis.pheno <- data.frame(strsplit2(names(count.table), split = "_"))
+kable(head(psoriasis.pheno))
+names(psoriasis.pheno) <- c("GSM_ID", "M_ID", "Group","tissue", "SRX_ID")
+row.names(psoriasis.pheno)<- names(count.table)
+
+## Write a file with the pheno
+setwd(dir.psoriasis)
+file.pheno <- file.path("data", "counts_all_sample_pheno.tab")
+write.table(psoriasis.pheno, file=file.pheno, 
+            quote=FALSE, row.names = TRUE, col.names = TRUE, sep="\t")
+
+```
+
+The [pheno table](`r file.pheno`) contains `r nrow(psoriasis.pheno)` rows (one per sample) and `r ncol(psoriasis.pheno)` columns (one per sample attribute). 
+
+```{r sorting_count_table_and_pheno_table}
+
+norm <- psoriasis.pheno$Group =="normal"
+pso <- psoriasis.pheno$Group == "Psoriasis"
+
+counts <- cbind(count.table[, norm], count.table[, pso])
+rm(norm, pso)
+
+psoriasis.pheno <- data.frame(strsplit2(names(counts), split = "_"))
+names(psoriasis.pheno) <- c("GSM_ID", "M_ID", "Group","tissue", "SRX_ID")
+row.names(psoriasis.pheno)<- names(counts)
+
+## Write a file with the pheno
+write.table(psoriasis.pheno, file=file.path(dir.counts, "counts_all_sample_pheno.tab"), quote=FALSE, row.names = TRUE, col.names = TRUE, sep="\t")
+
+# Phenotypic Data
+col.pheno <- c(normal = "green", 
+               Psoriasis = "orange")
+
+psoriasis.pheno$color <- col.pheno[as.vector(psoriasis.pheno$Group)]
+
+#Barplot
+barplot(colSums(counts)/1000000, 
+        main="Total number of reads per sample (million)",
+        col=psoriasis.pheno$color, 
+        names.arg = "", 
+        las=2, 
+        xlab="Samples", 
+        ylab="Million counts")
+```
+
+# Descriptive statistics
+## Basic statistics
+we can show here from the Basic statistics per sample, since these statistics per gene are meaningful only after library-wise normalization of the counts. we have number of sample is 174 and number of Genes is 23368 beside that we noticed all the samples have many from the zero reads, where the percente of zero reads for each Genes in count table is very high. you can notice all these informative information from  brif random summary from the milestone values (Mean, median, quartiles)  
+ 
+```{r Discriptive_statistics}
+
+#we will modify the row names by keeping the GSM ID and the group name. for simplicity
+
+test <- data.frame(strsplit2(names(counts), split = "_"))
+colnames(counts) <- paste(test$X1, test$X3)
+rm(test)
+row.names(psoriasis.pheno)<- names(counts)
+
+
+stats.per.sample <- data.frame(t(do.call(cbind, lapply(counts, summary))))
+# Add some percentiles
+stats.per.sample$perc05 <- apply(counts, 2, quantile, 0.05)
+stats.per.sample$perc10 <- apply(counts, 2, quantile, 0.10)
+stats.per.sample$perc90 <- apply(counts, 2, quantile, 0.90)
+stats.per.sample$perc95 <- apply(counts, 2, quantile, 0.95)
+stats.per.sample$zeros <- apply(counts == 0, 2, sum)
+stats.per.sample$percent.zeros <- 100 * stats.per.sample$zeros / nrow(counts)
+
+# View(stats.per.sample)
+kable(stats.per.sample[sample(1:ncol(counts), size = 10),],
+      caption = "**Table: statistics per sample. ** We only display a random selection of 10 samples. ")
+
+kable(as.data.frame(table(psoriasis.pheno$Group)), col.names = c("Group", "Number of samples"),
+      caption = "**Number of samples per group.** ")
+```
+
+## Distributions
+
+we impose a very large scale on the X axis.so so that We will use a logarithmic transformation to improve the readability. beside that we will add pseudo count to avoid problems with “zero” counts observed for some genes in some samples.
+```{r Distributions, fig.height=5, fig.width=8, fig.cap="**Histrogram of count table per Gene**" }
+## Data distribution in log scale.
+
+epsilon <- 1 # pseudo-count to avoid problems with log(0)
+
+## Logarithmic transformation
+hist(as.matrix(log2(counts + epsilon)), breaks=100, col="blue", border="white",
+     main="", xlab=paste0("log2(counts +",epsilon,")"), ylab="Number of genes")
+
+```
+
+apparently from this Histogram the data are sime discreate data, where we can't say it is follow the normal distribution. 
+
+```{r boxplot_log2_raw_counts, fig.width=6, fig.height=12, fig.path="figures/psoriasis_", fig.cap="**Box plot of the log2-transofrmed counts, before normalisation**. Each boxplot corresponds to one sample. Colors: orange=prosiasis, green=control. "}
+
+## Boxplot
+boxplot(log2(counts[,62:102] + epsilon), 
+        col=psoriasis.pheno$color[62:102], 
+        pch=".", 
+        horizontal=TRUE, 
+        cex.axis=0.5,
+        las=1, ylab="Samples", 
+        xlab="log2(Counts +1)")
+```
+
+from that boxplot,it is the time to we can identifiy the outliers and comparing the distributions for each sample in the count table. where in each sample there are many outliers and it is absolutaly the distribution for these samples aren't follow the Normal distribution where it shortest to discreat distribution. 
+The scatter plot shows if we can have a good reproductibility between the samples of psoriasis and normal skin disease. 
+
+```{r fig.width=8, fig.height=5, fig.path="figures/psoriasis_", fig.cap="** scatter plot for a pair of variables (samples) with density colors **"}
+## Define a function to draw a scatter plot for a pair of variables (samples) with density colors
+plotFun <- function(x,y){ 
+  dns <- densCols(x,y);
+  points(x,y, col=dns, pch=".", panel.first=grid());  
+  abline(a=0, b=1, col="brown")
+  }
+
+## Plot the scatter plot for a few pairs of variables selected at random
+set.seed(911) # forces the random number generator to produce fixed results
+pairs(log2(counts[,sample(ncol(counts),5)] + epsilon), 
+      panel=plotFun, lower.panel = NULL)
+```
+
+all points are aligned along te diagonal, with a relatively wider dispersion at the bottom, corresponding to small number fluctuations.
+In contrast, on all the plots comparing a psoriasis and a normal sample, we can see some points (genes) being put out from the diagonal.
+
+
+```{r}
+if(!require("affy")){
+  source("http://bioconductor.org/biocLite.R")
+  biocLite("affy")  
+}
+library(affy)
+plotDensity(log2(counts + epsilon), lty=1, col=psoriasis.pheno$color, lwd=2)
+grid()
+legend("topright", legend=names(col.pheno), col=col.pheno, lwd=2)
+
+```
+
+where from the density curve for each sample we can confirm our conclusion about normality of our data.
+
+# Eliminating undetected genes
+as from we notecied from our discrptive analysis about our data we seen many zero (null) reads for many genes in Psoriasis genome. as exemplified by from the following barplot we have some genes undetected in any of sample, so that we must to delete them from count Table.
+
+```{r fig.width=8, fig.height=5, fig.path="figures/psoriasis_", fig.cap="** Undetected genes **"}
+prop.null <- apply(counts, 2, function(x) 100*mean(x==0))
+
+barplot(prop.null[62:102], main="Percentage of null counts per sample",
+        horiz=TRUE, cex.names=0.5, las=1, 
+        col= psoriasis.pheno$color[62:102], ylab='Samples', xlab='% of null counts')
+
+## Some genes were not detected at all in these samples. We will discard them.
+counts.onlyDetected <- counts[rowSums(counts) > 0,]
+
+```
+
+# Selecting randomly samples
+
+The most important question that will drive the analysis will be to define the impact of the number of sample on the analysis. so that, here we used a high number of replicates (**25 replicates**) for the analysis. 
+
+```
+We would be used DESeq owing to minimizing false positives is more important and DESeq absolutely exceeds the other tools.
+```
+```{r selecting_random_sample}
+nb.replicates <- 25
+
+## Random sampling of the normal replicates (columns 1 to 82)
+samples.norm <- sample(1:82, size=nb.replicates, replace=FALSE)
+
+## Random sampling of the Psoriasis replicates (columns 83 to 174)
+samples.pso <- sample(83:174, size=nb.replicates, replace=FALSE)
+
+selected.samples <- c(samples.norm, samples.pso)
+
+# Update colors
+col.pheno.selected <- psoriasis.pheno$color[selected.samples]
+```
+
+# Detect differentially expressed genes 
+
+```{r installing_DESeq2}
+## Install the library if needed then load it
+if(!require("DESeq2")){
+  source("http://bioconductor.org/biocLite.R")
+  biocLite("DESeq2")
+}
+library("DESeq2")
+```
+
+## Creating a DESeqDataSet dataset
+```{r}
+## Use the DESeqDataSetFromMatrix to create a DESeqDataSet object
+dds0 <- DESeqDataSetFromMatrix(countData = counts.onlyDetected[,selected.samples ], colData = psoriasis.pheno[selected.samples,], design = ~ Group)
+print(dds0)
+```
+
+## Normalization
+
+We can be used The method estimateSizeFactors() associated with normalization for the "CountDataSet" class. Here's a short view of the result:
+```{r Normalisation_for_CountDataSet_class}
+## Normalizing using the method for an object of class"CountDataSet" 
+dds.norm <-  estimateSizeFactors(dds0)
+sample(sizeFactors(dds.norm), size = 6, replace = F)
+#dds.norm <- estimSf(dds0)
+#head(dds.norm)
+```
+
+```{r boxplot_row}
+## Checking the normalization
+boxplot(log2(counts(dds.norm)+epsilon),  col=col.pheno.selected, cex.axis=0.7, 
+        las=1, xlab= paste("log2(counts +",epsilon,")"), horizontal=TRUE, main="Raw counts")
+```
+
+## Count variance is related to mean
+
+Here it is instructive to look at how the variance is related to the mean by computing and displaying them in a plot. let's to compute some of the statistics: 
+
+```{r computing_mean_and_variance}
+## Computing mean and variance
+norm.counts <- counts(dds.norm, normalized=TRUE)
+mean.counts <- rowMeans(norm.counts)
+variance.counts <- apply(norm.counts, 1, var)
+
+norm.counts.stats <- data.frame(
+min=apply(norm.counts, 2, min),
+mean=apply(norm.counts, 2, mean),
+median=apply(norm.counts, 2, median),
+max=apply(norm.counts, 2, max),
+zeros=apply(norm.counts==0, 2, sum),
+percent.zeros=100*apply(norm.counts==0, 2, sum)/nrow(norm.counts),
+perc10=apply(norm.counts, 2, quantile, 0.10),
+perc20=apply(norm.counts, 2, quantile, 0.20),
+perc50=apply(norm.counts, 2, quantile, 0.50),
+perc90=apply(norm.counts, 2, quantile, 0.90),
+perc95=apply(norm.counts, 2, quantile, 0.95))
+
+kable(norm.counts.stats[sample(nrow(norm.counts.stats), 10), ])
+```
+
+
+```{r fig.width=7, fig.height=7, fig.cap="**Figure: variance/mean plot. ** The brown line highlights $x=y$, which corresponds to the expected relationship between mean and variance for a Poisson distribution."}
+
+## Mean and variance relationship
+mean.var.col <- densCols(x=log2(mean.counts), y=log2(variance.counts))
+plot(x=log2(mean.counts), y=log2(variance.counts), pch=16, cex=0.5, 
+     col=mean.var.col, main="Mean-variance relationship",
+     xlab="Mean log2(normalized counts) per gene",
+     ylab="Variance of log2(normalized counts)",
+     panel.first = grid())
+abline(a=0, b=1, col="brown")
+```
+
+## Modelling read counts through a negative binomial
+
+*from this Figure* we seen the brown line highlights $$ x=Y$$ which shown the expected relationship between mean and variance for a poisson distribution.
+ 
+## Using mean and dispersion
+ we would using second way to parametrizing the distribution by using mean value $m$ and the dispersion parameter r. we thus can compute the variance of distribution
+
+## Modelling read counts through a negative binomial Distribution.
+we use the DESeq to perform differntial expression by assuming for each gene the read counts are generated by a negative Bionomial distribution, the essential problem here will be to estimate, for each gene, the two parameters of the negative bionomial distribution: mean and dispersion.
+ - The mean will be estimated from the observed normalized counts in both conditions.
+ - the procedures will be to compute a gene-wise dispersion. when the number of available samples is insufficient to obtain a reliable estimator of the variance for each gene, DESeq will apply *a shrinkage Strategy* which assumes that counts produced by genes with similar expression level(counts) have the similar variance.
+ 
+```{r Modeing_read_counts}
+## Performing estimation of dispersion parameter
+dds.disp <- estimateDispersions(dds.norm)
+
+## A diagnostic plot which
+## shows the mean of normalized counts (x axis)
+## and dispersion estimate for each genes
+plotDispEsts(dds.disp)
+```
+
+## Performing differential expression call
+
+Now that a negative binomial model has been fitted for each gene, the nbinomWaldTest can be used to test for differential expression. The output is a data.frame which contains nominal p-values, as well as FDR values (correction for multiple tests computed with the Benjamini-Hochberg procedure).
+
+```{r differential_expression_call}
+alpha <- 0.0001
+wald.test <- nbinomWaldTest(dds.disp)
+res.DESeq2 <- results(wald.test, alpha=alpha, pAdjustMethod="BH")
+head(res.DESeq2)
+```
+
+Then we can order the table by the p-value to show the most significant entries.
+
+```{r order_by_p_value}
+## Order the table by decreasing p-valuer
+res.DESeq2 <- res.DESeq2[order(res.DESeq2$padj),]
+head(res.DESeq2)
+```
+
+## Histogram plot
+Let's have a notice a histogram of these data.
+
+```{r histogram_for_p_value}
+## Draw an histogram of the p-values
+hist(res.DESeq2$padj, breaks=20, col="grey", main="DESeq2 p-value distribution", xlab="DESeq2 P-value", ylab="Number of genes")
+
+```
+
+We can deduce that many of these genes have a low p-value.
+
+## Volcano plot
+
+The volcano gives us an idea about the fold changes of the genes and the most significant ones. The farther, the more is differentially expressed.
+
+```{r Volcano_plot }
+alpha <- 0.005 # Threshold on the adjusted p-value
+cols <- densCols(res.DESeq2$log2FoldChange, -log10(res.DESeq2$pvalue))
+plot(res.DESeq2$log2FoldChange, -log10(res.DESeq2$padj), col=cols, panel.first=grid(),
+     main="Volcano plot", xlab="Effect size: log2(fold-change)", ylab="-log10(adjusted p-value)",
+     pch=20, cex=0.6)
+abline(v=0)
+abline(v=c(-1,1), col="brown")
+abline(h=-log10(alpha), col="brown")
+
+gn.selected <- abs(res.DESeq2$log2FoldChange) > 2 & res.DESeq2$padj < alpha 
+text(res.DESeq2$log2FoldChange[gn.selected],
+     -log10(res.DESeq2$padj)[gn.selected],
+     lab=rownames(res.DESeq2)[gn.selected ], cex=0.4)
+```
+
+The threshold for the adjused value is **`r alpha`**.
+
+## Check the expression levels of the most differentially expressed
+
+It may be important to check the validity of our analysis by simply assessing the expression level of the most highly differential gene.
+```{r most_expressed_genes}
+gn.most.sign <- rownames(res.DESeq2)[1]
+gn.most.diff.val <- counts(dds.norm, normalized=T)[gn.most.sign,]
+barplot(gn.most.diff.val, col=col.pheno.selected, main=gn.most.sign, las=2, cex.names=0.5)
+```
+
+From the plot, the most highly differential gene would be **`r gn.most.sign`**.
+
+## Looking at the results with a Minus-Add (MA) plot
+
+we use the (MA Plot) between two conditions $a$ and $b$. where we need to exemplify this from 
+ - M (Minus) is the log ratio of counts calculated for any gene.
+    $$ M_{g} = log2(\bar{x_{g,a}}) - log2(\bar{x_{g,b}})$$
+ - A (add) is the average log counts which corresponds to an estimate of the gene expression level.
+ $$A_{g}= \frac{1}{2} (log2(\bar{x_{g,a}}) + log2(\bar{x_{g,b}}))  $$
+ 
+ 
+```{r MA_plot}
+## Draw a MA plot.
+## Genes with adjusted p-values below 1% are shown
+plotMA(res.DESeq2, colNonSig = "blue")
+abline(h=c(-1:1), col="red")
+```
+
+## Hierarchical clustering 
+
+Now we need to ensure that distinguish  well between "Psoriasis" and "Normal" condition we will perform a hierachical clusting using the *heatmap.2()* function from the gplots library.
+whereas Let's see how many genes are kept based on our FDR rate which is **`r alpha`**.
+
+```{r Hierarchical_clustering}
+
+## We select gene names based on FDR (0.5%)
+gene.kept <- rownames(res.DESeq2)[res.DESeq2$padj <= alpha & !is.na(res.DESeq2$padj)]
+
+## We retrieve the normalized counts for gene of interest
+count.table.kept <- log2(counts + epsilon)[gene.kept, ]
+dim(count.table.kept)
+```
+
+Then, the volcano plot would be:
+```{r heatmap_plot}
+
+## Install the gplots library if needed then load it
+if(!require("gplots")){
+  install.packages("gplots")
+}
+library("gplots")
+
+## Perform the hierarchical clustering with
+## A distance based on Pearson-correlation coefficient
+## and average linkage clustering as agglomeration criteria
+heatmap.2(as.matrix(count.table.kept), 
+          scale="row", 
+          hclust=function(x) hclust(x,method="average"), 
+          distfun=function(x) as.dist((1-cor(t(x)))/2), 
+          trace="none", 
+          density="none", 
+          labRow="",
+          cexCol=0.7)
+```
+
+## Functional Enrichment
+
+Now we will use the list of induced genes to perform the functional enrichment, whereas we used gPrifileR R library.
+
+```{r gProfileR}
+library(gProfileR)
+
+res.DESeq2.df <- na.omit(data.frame(res.DESeq2))
+induced.sign <- rownames(res.DESeq2.df)[res.DESeq2.df$log2FoldChange >= 2 &  res.DESeq2.df$padj < alpha]
+
+term.induced <- gprofiler(query=induced.sign, organism="hsapiens")
+term.induced <- term.induced[order(term.induced$p.value),]
+# term.induced$p.value
+kable(term.induced[1:5,c("term.name",
+                      "term.size",
+                      "query.size",
+                      "overlap.size",
+                      "recall",
+                      "precision",
+                      "p.value", 
+                      "intersection")], format.args=c(digits=3))
+```
+
+And now using the list of repressed genes:
+```{r repressed_genes}
+res.DESeq2.df <- na.omit(data.frame(res.DESeq2))
+repressed.sign <- rownames(res.DESeq2.df)[res.DESeq2.df$log2FoldChange <= -2 &  res.DESeq2.df$padj < alpha]
+head(repressed.sign)
+```
+
+The final result would be:
+```{r result_table}
+term.repressed <- gprofiler(query=repressed.sign, organism="hsapiens")
+term.repressed <- term.repressed[order(term.repressed$p.value),]
+kable(head(term.induced[,c("p.value", "term.name","intersection")], 10))
+```
+
+# Estimate the effect of sample number on differential expression call
+
+```{r differential_expression_call}
+## Create a directory to store the results that will be obtained below
+dir.results <- file.path(dir.psoriasis, "results")
+dir.create(dir.results, showWarnings = FALSE, recursive = TRUE)
+
+## Export the table with statistics per sample.
+write.table(stats.per.sample, file=file.path(dir.results, "stats_per_sample.tsv"),
+            quote=FALSE, sep="\t", col.names =NA, row.names = TRUE)
+
+## Export the DESeq2 result table
+DESeq2.table <- file.path(dir.results, "hsapiens_Psoriasis_vs_normal_DESeq2_diff.tsv")
+write.table(res.DESeq2, file=DESeq2.table, col.names = NA, row.names = TRUE, sep="\t", quote = FALSE)
+```
+
+# Sub-Sampling with various subset sizes.
+
+```{r sub_sampling}
+
+n <- c(2,3,4,5,10,20,40)
+
+for (x in n){
+  
+  nb.replicates <- x
+  writeLines(paste("The number of replicates used:", nb.replicates))
+  
+  # All the follwing steps to generate res.DESeq2 with the given number of replicates
+  samples.norm <- sample(1:82, size=nb.replicates, replace=FALSE)
+  samples.pso <- sample(83:174, size=nb.replicates, replace=FALSE)
+  selected.samples <- c(samples.norm, samples.pso)
+  col.pheno.selected <- psoriasis.pheno$color[selected.samples]
+  dds0 <- DESeqDataSetFromMatrix(countData = counts.onlyDetected[,selected.samples ], colData = psoriasis.pheno[selected.samples,], design = ~ Group)
+  dds.norm <-  estimateSizeFactors(dds0)
+  dds.disp <- estimateDispersions(dds.norm)
+  alpha <- 0.0001
+  wald.test <- nbinomWaldTest(dds.disp)
+  res.DESeq2 <- results(wald.test, alpha=alpha, pAdjustMethod="BH")
+  res.DESeq2 <- res.DESeq2[order(res.DESeq2$padj),]
+  
+  print(head(res.DESeq2))
+  
+  alpha <- 0.005
+  gn.most.sign <- rownames(res.DESeq2)[1]
+  gn.most.diff.val <- counts(dds.norm, normalized=T)[gn.most.sign,]
+
+  # MAplot
+  plotMA(res.DESeq2, colNonSig = "blue")
+  abline(h=c(-1:1), col="red")
+  
+  # Export
+  
+  ## Export the DESeq2 result table
+  
+  DESeq2.table <- file.path(dir.results,paste0("Psoriasis_vs_normal_DESeq2_diff_replicate",nb.replicates,".tsv"))
+  write.table(res.DESeq2, file=DESeq2.table, col.names = NA, row.names = TRUE, sep="\t", quote = FALSE)
+  }
+
+```
+
+# Negative control
+
+Here, we will run a negative control using samples from the same group.
+```{r negative_control_between_normal}
+
+  nb.replicates <- 10
+  writeLines(paste("The number of replicates used:", nb.replicates,
+                   "\n",
+                   "Normal vs Normal"))
+  
+  # All the follwing steps to generate res.DESeq2 with the given number of replicates
+  vec <- 1:82
+  samples.norm <- vec [vec %in% sample(1:82, size=nb.replicates, replace=FALSE)]
+  vec <- vec [! vec %in% samples.pso]
+  samples.norm2 <- sample(vec, size=nb.replicates, replace=FALSE)
+  selected.samples <- c(samples.norm, samples.norm2)
+  col.pheno.selected <- psoriasis.pheno$color[selected.samples]
+  dds0 <- DESeqDataSetFromMatrix(countData = counts.onlyDetected[,selected.samples ], colData = psoriasis.pheno[selected.samples,], design = ~ 1)
+  dds.norm <-  estimateSizeFactors(dds0)
+  dds.disp <- estimateDispersions(dds.norm)
+  alpha <- 0.0001
+  wald.test <- nbinomWaldTest(dds.disp)
+  res.DESeq2 <- results(wald.test, alpha=alpha, pAdjustMethod="BH")
+  res.DESeq2 <- res.DESeq2[order(res.DESeq2$padj),]
+  head(res.DESeq2)
+  alpha <- 0.005
+  gn.most.sign <- rownames(res.DESeq2)[1]
+  gn.most.diff.val <- counts(dds.norm, normalized=T)[gn.most.sign,]
+  
+    
+  # Volcano plot 
+cols <- densCols(res.DESeq2$log2FoldChange, -log10(res.DESeq2$pvalue))
+plot(res.DESeq2$log2FoldChange, -log10(res.DESeq2$padj), col=cols, panel.first=grid(),
+     main="Volcano plot", xlab="Effect size: log2(fold-change)", ylab="-log10(adjusted p-value)",
+     pch=20, cex=0.6)
+abline(v=0)
+abline(v=c(-1,1), col="brown")
+abline(h=-log10(alpha), col="brown")
+
+gn.selected <- abs(res.DESeq2$log2FoldChange) > 2 & res.DESeq2$padj < alpha 
+text(res.DESeq2$log2FoldChange[gn.selected],
+     -log10(res.DESeq2$padj)[gn.selected],
+     lab=rownames(res.DESeq2)[gn.selected ], cex=0.4)
+
+  
+  
+  ## Export the DESeq2 result table
+  
+  DESeq2.table <- file.path(dir.results,paste0("hsapiens_normal_vs_normal_DESeq2_diff.tsv"))
+  write.table(res.DESeq2, file=DESeq2.table, col.names = NA, row.names = TRUE, sep="\t", quote = FALSE)
+  
+```
+
+```{r negative_control_between_psoriasis}
+
+ nb.replicates <- 10
+  writeLines(paste("The number of replicates used:",   nb.replicates,
+                   "\n",
+                   "Psoriasis vs Psoriasis"))
+  
+  # All steps to produce res.DESeq2 with the given number of replicates
+  vec <- 83:174
+  samples.pso <- vec [vec %in% sample(83:174, size=nb.replicates, replace=FALSE)]
+  vec <- vec [! vec %in% samples.pso]
+  samples.pso2 <- sample(vec, size=nb.replicates, replace=FALSE)
+  selected.samples <- c(samples.pso2, samples.pso)
+  col.pheno.selected <- psoriasis.pheno$color[selected.samples]
+  dds0 <- DESeqDataSetFromMatrix(countData = counts.onlyDetected[,selected.samples ], colData = psoriasis.pheno[selected.samples,], design = ~ 1)
+  dds.norm <-  estimateSizeFactors(dds0)
+  dds.disp <- estimateDispersions(dds.norm)
+  alpha <- 0.0001
+  wald.test <- nbinomWaldTest(dds.disp)
+  res.DESeq2 <- results(wald.test, alpha=alpha, pAdjustMethod="BH")
+  res.DESeq2 <- res.DESeq2[order(res.DESeq2$padj),]
+  head(res.DESeq2)
+  alpha <- 0.005
+  gn.most.sign <- rownames(res.DESeq2)[1]
+  gn.most.diff.val <- counts(dds.norm, normalized=T)[gn.most.sign,]
+  
+  # Volcano plot 
+cols <- densCols(res.DESeq2$log2FoldChange, -log10(res.DESeq2$pvalue))
+plot(res.DESeq2$log2FoldChange, -log10(res.DESeq2$padj), col=cols, panel.first=grid(),
+     main="Volcano plot", xlab="Effect size: log2(fold-change)", ylab="-log10(adjusted p-value)",
+     pch=20, cex=0.6)
+abline(v=0)
+abline(v=c(-1,1), col="brown")
+abline(h=-log10(alpha), col="brown")
+
+gn.selected <- abs(res.DESeq2$log2FoldChange) >  2 & res.DESeq2$padj < alpha 
+text(res.DESeq2$log2FoldChange[gn.selected],
+     -log10(res.DESeq2$padj)[gn.selected],
+     lab=rownames(res.DESeq2)[gn.selected ], cex=0.4)
+  
+  # Export
+  
+  ## Export the DESeq2 result table
+  
+  DESeq2.table <- file.path(dir.results,paste0("hsapiens_Psoriasis_vs_Psoriasis_DESeq2_diff.tsv"))
+  write.table(res.DESeq2, file=DESeq2.table, col.names = NA, row.names = TRUE, sep="\t", quote = FALSE)
+
+```
+
+# References 
+
